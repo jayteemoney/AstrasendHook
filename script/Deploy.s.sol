@@ -167,37 +167,86 @@ contract DeployRemitSwapHook is Script {
     }
 }
 
+/// @title MockUSDT
+/// @notice Simple ERC20 for testnet deployment (no real USDT on Base Sepolia)
+contract MockUSDT {
+    string public name = "Mock USDT";
+    string public symbol = "USDT";
+    uint8 public decimals = 6;
+    uint256 public totalSupply;
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
+
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+
+    function mint(address to, uint256 amount) external {
+        balanceOf[to] += amount;
+        totalSupply += amount;
+        emit Transfer(address(0), to, amount);
+    }
+
+    function approve(address spender, uint256 amount) external returns (bool) {
+        allowance[msg.sender][spender] = amount;
+        emit Approval(msg.sender, spender, amount);
+        return true;
+    }
+
+    function transfer(address to, uint256 amount) external returns (bool) {
+        require(balanceOf[msg.sender] >= amount, "Insufficient balance");
+        balanceOf[msg.sender] -= amount;
+        balanceOf[to] += amount;
+        emit Transfer(msg.sender, to, amount);
+        return true;
+    }
+
+    function transferFrom(address from, address to, uint256 amount) external returns (bool) {
+        require(balanceOf[from] >= amount, "Insufficient balance");
+        require(allowance[from][msg.sender] >= amount, "Insufficient allowance");
+        allowance[from][msg.sender] -= amount;
+        balanceOf[from] -= amount;
+        balanceOf[to] += amount;
+        emit Transfer(from, to, amount);
+        return true;
+    }
+}
+
 /// @title DeployToBaseSepolia
 /// @notice Convenience script for Base Sepolia testnet deployment
-/// @dev Run with: forge script script/Deploy.s.sol:DeployToBaseSepolia --rpc-url base-sepolia --broadcast
+/// @dev Deploys a MockUSDT automatically since real USDT doesn't exist on testnet
+/// Run with: forge script script/Deploy.s.sol:DeployToBaseSepolia --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast
 contract DeployToBaseSepolia is Script {
     function run() external {
         console.log("Deploying to Base Sepolia...");
 
-        // Load environment
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        address feeCollector = vm.envOr("FEE_COLLECTOR", vm.addr(deployerPrivateKey));
-        address supportedToken = vm.envAddress("SUPPORTED_TOKEN");
+        address deployer = vm.addr(deployerPrivateKey);
+        address feeCollector = vm.envOr("FEE_COLLECTOR", deployer);
 
         address poolManager = 0x7Da1D65F8B249183667cdE74C5CBD46dD38AA829;
 
-        console.log("Pool Manager:", poolManager);
-        console.log("Supported Token:", supportedToken);
-        console.log("Fee Collector:", feeCollector);
-
         vm.startBroadcast(deployerPrivateKey);
 
-        // Deploy contracts
+        // 1. Deploy MockUSDT for testnet
+        MockUSDT mockUsdt = new MockUSDT();
+        console.log("MockUSDT deployed at:", address(mockUsdt));
+
+        // Mint test tokens to deployer (1M USDT)
+        mockUsdt.mint(deployer, 1_000_000 * 1e6);
+        console.log("Minted 1,000,000 USDT to deployer");
+
+        // 2. Deploy AllowlistCompliance
         AllowlistCompliance compliance = new AllowlistCompliance();
         console.log("AllowlistCompliance:", address(compliance));
 
+        // 3. Deploy PhoneNumberResolver
         PhoneNumberResolver phoneResolver = new PhoneNumberResolver();
         console.log("PhoneNumberResolver:", address(phoneResolver));
 
-        // Deploy hook with address mining
+        // 4. Deploy RemitSwapHook with address mining
         uint160 flags = uint160(Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG);
         bytes memory constructorArgs =
-            abi.encode(poolManager, compliance, phoneResolver, feeCollector, supportedToken);
+            abi.encode(poolManager, compliance, phoneResolver, feeCollector, address(mockUsdt));
 
         (address hookAddress, bytes32 salt) =
             HookMiner.find(address(this), flags, type(RemitSwapHook).creationCode, constructorArgs);
@@ -207,18 +256,31 @@ contract DeployToBaseSepolia is Script {
             ICompliance(address(compliance)),
             IPhoneNumberResolver(address(phoneResolver)),
             feeCollector,
-            supportedToken
+            address(mockUsdt)
         );
         require(address(hook) == hookAddress, "Hook address mismatch");
         console.log("RemitSwapHook:", address(hook));
 
-        // Configure
+        // 5. Configure
         compliance.setHook(address(hook));
-        compliance.addToAllowlist(vm.addr(deployerPrivateKey), 0);
+        compliance.addToAllowlist(deployer, 0);
+
+        // 6. Approve hook to spend deployer's USDT
+        mockUsdt.approve(address(hook), type(uint256).max);
 
         vm.stopBroadcast();
 
-        console.log("\n=== Deployment Complete ===");
+        console.log("\n========== BASE SEPOLIA DEPLOYMENT ==========");
+        console.log("MockUSDT:           ", address(mockUsdt));
+        console.log("AllowlistCompliance:", address(compliance));
+        console.log("PhoneNumberResolver:", address(phoneResolver));
+        console.log("RemitSwapHook:      ", address(hook));
+        console.log("Fee Collector:      ", feeCollector);
+        console.log("==============================================");
+        console.log("\nNext steps:");
+        console.log("1. Save these addresses to your .env file");
+        console.log("2. Run: make setup-demo");
+        console.log("3. Mint test USDT: MockUSDT.mint(address, amount)");
     }
 }
 
