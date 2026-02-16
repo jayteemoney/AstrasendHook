@@ -18,6 +18,9 @@ import { IWorldID } from "../src/interfaces/IWorldID.sol";
 /// @notice Deployment script for RemitSwapHook and supporting contracts
 /// @dev Run with: forge script script/Deploy.s.sol:DeployRemitSwapHook --rpc-url <RPC_URL> --broadcast
 contract DeployRemitSwapHook is Script {
+    /// @dev Foundry's deterministic CREATE2 deployer used during broadcast
+    address constant CREATE2_DEPLOYER = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
+
     // ============ Deployment Configuration ============
 
     // Base Mainnet PoolManager
@@ -102,7 +105,8 @@ contract DeployRemitSwapHook is Script {
         console.log("PhoneNumberResolver deployed at:", address(phoneResolver));
 
         // 3. Deploy RemitSwapHook with address mining
-        hook = _deployHook(IPoolManager(poolManager), feeCollector, supportedToken);
+        address deployer = vm.addr(deployerPrivateKey);
+        hook = _deployHook(IPoolManager(poolManager), feeCollector, supportedToken, deployer);
         console.log("RemitSwapHook deployed at:", address(hook));
 
         // 4. Configure compliance to accept hook
@@ -131,7 +135,7 @@ contract DeployRemitSwapHook is Script {
 
     // ============ Hook Deployment with Address Mining ============
 
-    function _deployHook(IPoolManager poolManager, address feeCollector, address supportedToken)
+    function _deployHook(IPoolManager poolManager, address feeCollector, address supportedToken, address initialOwner)
         internal
         returns (RemitSwapHook)
     {
@@ -140,13 +144,13 @@ contract DeployRemitSwapHook is Script {
 
         // Prepare constructor arguments
         bytes memory constructorArgs =
-            abi.encode(poolManager, compliance, phoneResolver, feeCollector, supportedToken);
+            abi.encode(poolManager, compliance, phoneResolver, feeCollector, supportedToken, initialOwner);
 
         // Find a valid salt that produces an address with correct flags
         console.log("Mining hook address with flags:", flags);
 
         (address hookAddress, bytes32 salt) =
-            HookMiner.find(address(this), flags, type(RemitSwapHook).creationCode, constructorArgs);
+            HookMiner.find(CREATE2_DEPLOYER, flags, type(RemitSwapHook).creationCode, constructorArgs);
 
         console.log("Found valid hook address:", hookAddress);
         console.log("Using salt:", vm.toString(salt));
@@ -157,7 +161,8 @@ contract DeployRemitSwapHook is Script {
             ICompliance(address(compliance)),
             IPhoneNumberResolver(address(phoneResolver)),
             feeCollector,
-            supportedToken
+            supportedToken,
+            initialOwner
         );
 
         // Verify deployment address matches computed address
@@ -216,6 +221,9 @@ contract MockUSDT {
 /// @dev Deploys a MockUSDT automatically since real USDT doesn't exist on testnet
 /// Run with: forge script script/Deploy.s.sol:DeployToBaseSepolia --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast
 contract DeployToBaseSepolia is Script {
+    /// @dev Foundry's deterministic CREATE2 deployer used during broadcast
+    address constant CREATE2_DEPLOYER = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
+
     function run() external {
         console.log("Deploying to Base Sepolia...");
 
@@ -246,17 +254,18 @@ contract DeployToBaseSepolia is Script {
         // 4. Deploy RemitSwapHook with address mining
         uint160 flags = uint160(Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG);
         bytes memory constructorArgs =
-            abi.encode(poolManager, compliance, phoneResolver, feeCollector, address(mockUsdt));
+            abi.encode(poolManager, compliance, phoneResolver, feeCollector, address(mockUsdt), deployer);
 
         (address hookAddress, bytes32 salt) =
-            HookMiner.find(address(this), flags, type(RemitSwapHook).creationCode, constructorArgs);
+            HookMiner.find(CREATE2_DEPLOYER, flags, type(RemitSwapHook).creationCode, constructorArgs);
 
         RemitSwapHook hook = new RemitSwapHook{ salt: salt }(
             IPoolManager(poolManager),
             ICompliance(address(compliance)),
             IPhoneNumberResolver(address(phoneResolver)),
             feeCollector,
-            address(mockUsdt)
+            address(mockUsdt),
+            deployer
         );
         require(address(hook) == hookAddress, "Hook address mismatch");
         console.log("RemitSwapHook:", address(hook));
@@ -288,6 +297,9 @@ contract DeployToBaseSepolia is Script {
 /// @notice Convenience script for Base mainnet deployment
 /// @dev Run with: forge script script/Deploy.s.sol:DeployToBase --rpc-url base --broadcast
 contract DeployToBase is Script {
+    /// @dev Foundry's deterministic CREATE2 deployer used during broadcast
+    address constant CREATE2_DEPLOYER = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
+
     function run() external {
         console.log("!!! WARNING: Deploying to Base Mainnet !!!");
 
@@ -311,26 +323,28 @@ contract DeployToBase is Script {
         console.log("PhoneNumberResolver:", address(phoneResolver));
 
         // Deploy hook with address mining
+        address deployer = vm.addr(deployerPrivateKey);
         uint160 flags = uint160(Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG);
         bytes memory constructorArgs =
-            abi.encode(poolManager, compliance, phoneResolver, feeCollector, supportedToken);
+            abi.encode(poolManager, compliance, phoneResolver, feeCollector, supportedToken, deployer);
 
         (address hookAddress, bytes32 salt) =
-            HookMiner.find(address(this), flags, type(RemitSwapHook).creationCode, constructorArgs);
+            HookMiner.find(CREATE2_DEPLOYER, flags, type(RemitSwapHook).creationCode, constructorArgs);
 
         RemitSwapHook hook = new RemitSwapHook{ salt: salt }(
             IPoolManager(poolManager),
             ICompliance(address(compliance)),
             IPhoneNumberResolver(address(phoneResolver)),
             feeCollector,
-            supportedToken
+            supportedToken,
+            deployer
         );
         require(address(hook) == hookAddress, "Hook address mismatch");
         console.log("RemitSwapHook:", address(hook));
 
         // Configure
         compliance.setHook(address(hook));
-        compliance.addToAllowlist(vm.addr(deployerPrivateKey), 0);
+        compliance.addToAllowlist(deployer, 0);
 
         vm.stopBroadcast();
 

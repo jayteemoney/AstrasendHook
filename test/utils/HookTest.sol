@@ -161,7 +161,7 @@ abstract contract HookTest is Test {
 
         // Prepare constructor arguments
         bytes memory constructorArgs =
-            abi.encode(poolManager, compliance, phoneResolver, feeCollector, address(usdt));
+            abi.encode(poolManager, compliance, phoneResolver, feeCollector, address(usdt), deployer);
 
         // Find a valid salt
         (address hookAddress, bytes32 salt) =
@@ -173,7 +173,8 @@ abstract contract HookTest is Test {
             ICompliance(address(compliance)),
             IPhoneNumberResolver(address(phoneResolver)),
             feeCollector,
-            address(usdt)
+            address(usdt),
+            deployer
         );
 
         require(address(newHook) == hookAddress, "Hook address mismatch");

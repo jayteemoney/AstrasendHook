@@ -112,8 +112,9 @@ contract RemitSwapHook is BaseHook, IRemitSwapHook, Ownable, ReentrancyGuard {
         ICompliance _compliance,
         IPhoneNumberResolver _phoneResolver,
         address _feeCollector,
-        address _supportedToken
-    ) BaseHook(_poolManager) Ownable(msg.sender) {
+        address _supportedToken,
+        address _initialOwner
+    ) BaseHook(_poolManager) Ownable(_initialOwner) {
         if (address(_compliance) == address(0)) revert InvalidAddress();
         if (_feeCollector == address(0)) revert InvalidAddress();
         if (_supportedToken == address(0)) revert InvalidAddress();
