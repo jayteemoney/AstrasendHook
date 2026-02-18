@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useAccount } from "wagmi";
-import { ConnectKitButton } from "connectkit";
 import { Header } from "@/components/header";
 import { RemittanceCard } from "@/components/remittance-card";
 import { EmptyState } from "@/components/empty-state";
@@ -10,6 +9,18 @@ import { useUserRemittances } from "@/hooks/use-user-remittances";
 import { useComplianceStatus } from "@/hooks/use-compliance";
 import { useUSDTBalance } from "@/hooks/use-contract-write";
 import { formatUSDTDisplay, RemittanceStatus } from "@/lib/utils";
+import {
+  Hero,
+  HowItWorks,
+  Features,
+  Comparison,
+  TechStack,
+  FAQ,
+  CTA,
+  Footer,
+} from "@/components/landing";
+
+// ============ Dashboard (connected state) ============
 
 function Dashboard() {
   const { address } = useAccount();
@@ -133,63 +144,24 @@ function Dashboard() {
   );
 }
 
-function LandingHero() {
+// ============ Landing Page (disconnected state) ============
+
+function LandingPage() {
   return (
-    <div className="flex min-h-[80vh] flex-col items-center justify-center px-4 text-center">
-      <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-600 text-2xl font-bold text-white">
-        R
-      </div>
-      <h1 className="max-w-2xl text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl dark:text-zinc-100">
-        Send money anywhere.
-        <br />
-        <span className="text-emerald-600">Under 1% fees.</span>
-      </h1>
-      <p className="mt-4 max-w-lg text-lg text-zinc-600 dark:text-zinc-400">
-        RemitSwap uses Uniswap v4 hooks for low-cost, compliant cross-border
-        remittances. Group contributions, auto-release, and instant settlement
-        on Base.
-      </p>
-      <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row">
-        <ConnectKitButton />
-      </div>
-      <div className="mt-16 grid max-w-3xl grid-cols-1 gap-8 text-left sm:grid-cols-3">
-        <div>
-          <div className="mb-2 text-2xl font-bold text-emerald-600">
-            &lt; 1%
-          </div>
-          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-            Total Fees
-          </p>
-          <p className="mt-1 text-xs text-zinc-500">
-            vs. 6-15% with traditional services like Western Union
-          </p>
-        </div>
-        <div>
-          <div className="mb-2 text-2xl font-bold text-emerald-600">
-            Instant
-          </div>
-          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-            Settlement
-          </p>
-          <p className="mt-1 text-xs text-zinc-500">
-            No 3-5 business day waits. Funds arrive in seconds on Base L2.
-          </p>
-        </div>
-        <div>
-          <div className="mb-2 text-2xl font-bold text-emerald-600">
-            Compliant
-          </div>
-          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-            KYC / World ID
-          </p>
-          <p className="mt-1 text-xs text-zinc-500">
-            On-chain compliance with allowlist or Worldcoin proof-of-personhood.
-          </p>
-        </div>
-      </div>
-    </div>
+    <>
+      <Hero />
+      <HowItWorks />
+      <Features />
+      <Comparison />
+      <TechStack />
+      <FAQ />
+      <CTA />
+      <Footer />
+    </>
   );
 }
+
+// ============ Home (route handler) ============
 
 export default function Home() {
   const { isConnected } = useAccount();
@@ -204,7 +176,7 @@ export default function Home() {
   ) : (
     <>
       <Header />
-      <LandingHero />
+      <LandingPage />
     </>
   );
 }
