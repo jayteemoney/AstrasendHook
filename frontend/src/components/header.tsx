@@ -6,7 +6,7 @@ import { ConnectKitButton } from "connectkit";
 import { useAccount } from "wagmi";
 
 const navLinks = [
-  { href: "/", label: "Dashboard" },
+  { href: "/dashboard", label: "Dashboard" },
   { href: "/send", label: "Send" },
   { href: "/receive", label: "Receive" },
   { href: "/history", label: "History" },
@@ -32,10 +32,7 @@ export function Header() {
           {isConnected && (
             <nav className="hidden items-center gap-1 md:flex">
               {navLinks.map((link) => {
-                const isActive =
-                  link.href === "/"
-                    ? pathname === "/"
-                    : pathname.startsWith(link.href);
+                const isActive = pathname.startsWith(link.href);
                 return (
                   <Link
                     key={link.href}

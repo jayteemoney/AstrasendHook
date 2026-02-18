@@ -2,7 +2,7 @@
 
 const links = {
   product: [
-    { label: "Dashboard", href: "/" },
+    { label: "Dashboard", href: "/dashboard" },
     { label: "Send Money", href: "/send" },
     { label: "Receive", href: "/receive" },
     { label: "History", href: "/history" },
