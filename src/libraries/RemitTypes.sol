@@ -73,4 +73,12 @@ library RemitTypes {
     event PlatformFeeUpdated(uint256 oldFeeBps, uint256 newFeeBps);
 
     event AutoReleaseToggled(bool enabled);
+
+    event PoolRegistered(bytes32 indexed poolId, address token0, address token1, uint24 fee);
+
+    event DonationRouted(
+        uint256 indexed remittanceId, address indexed donor, uint256 amount0, uint256 amount1
+    );
+
+    event ComplianceGatedLP(address indexed provider, bytes32 indexed poolId, bool allowed);
 }
