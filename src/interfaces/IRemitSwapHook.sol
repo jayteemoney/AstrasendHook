@@ -39,6 +39,11 @@ interface IRemitSwapHook {
         bool autoRelease
     ) external returns (uint256 remittanceId);
 
+    /// @notice Contribute directly to a remittance without going through a swap
+    /// @param remittanceId The remittance to contribute to
+    /// @param amount The amount of supported token to contribute
+    function contributeDirectly(uint256 remittanceId, uint256 amount) external;
+
     /// @notice Release funds to recipient (only recipient can call)
     /// @param remittanceId The remittance to release
     function releaseRemittance(uint256 remittanceId) external;
@@ -111,4 +116,9 @@ interface IRemitSwapHook {
     /// @notice Toggle global auto-release setting
     /// @param enabled Whether auto-release should be enabled
     function setAutoRelease(bool enabled) external;
+
+    /// @notice Set donation routing for a pool corridor
+    /// @param pid The pool ID (bytes32)
+    /// @param remittanceId The remittance to route donations to (0 to disable)
+    function setDonationRouting(bytes32 pid, uint256 remittanceId) external;
 }
