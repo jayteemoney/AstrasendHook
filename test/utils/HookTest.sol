@@ -157,7 +157,10 @@ abstract contract HookTest is Test {
     /// @notice Deploy the hook with the correct address encoding
     function _deployHook() internal returns (RemitSwapHook) {
         // Calculate the flags we need
-        uint160 flags = uint160(Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG);
+        uint160 flags = uint160(
+            Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG | Hooks.AFTER_SWAP_RETURNS_DELTA_FLAG
+                | Hooks.AFTER_INITIALIZE_FLAG | Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_DONATE_FLAG
+        );
 
         // Prepare constructor arguments
         bytes memory constructorArgs =
