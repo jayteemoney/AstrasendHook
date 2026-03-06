@@ -9,11 +9,11 @@ import { PoolId, PoolIdLibrary } from "v4-core/src/types/PoolId.sol";
 import { BalanceDelta } from "v4-core/src/types/BalanceDelta.sol";
 import { BeforeSwapDelta, BeforeSwapDeltaLibrary } from "v4-core/src/types/BeforeSwapDelta.sol";
 import { Currency, CurrencyLibrary } from "v4-core/src/types/Currency.sol";
-import { SwapParams } from "v4-core/src/types/PoolOperation.sol";
+import { SwapParams, ModifyLiquidityParams } from "v4-core/src/types/PoolOperation.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { ReentrancyGuardTransient } from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 
 import { RemitTypes } from "./libraries/RemitTypes.sol";
 import { ICompliance } from "./interfaces/ICompliance.sol";
@@ -22,8 +22,10 @@ import { IRemitSwapHook } from "./interfaces/IRemitSwapHook.sol";
 
 /// @title RemitSwapHook
 /// @notice Uniswap v4 hook for low-cost, compliant cross-border remittances
+/// @dev Uses 6 hooks: beforeSwap, afterSwap, afterSwapReturnDelta, afterInitialize,
+///      beforeAddLiquidity, beforeDonate
 /// @author dev_jaytee
-contract RemitSwapHook is BaseHook, IRemitSwapHook, Ownable, ReentrancyGuard {
+contract RemitSwapHook is BaseHook, IRemitSwapHook, Ownable, ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
     using PoolIdLibrary for PoolKey;
     using CurrencyLibrary for Currency;
@@ -48,6 +50,18 @@ contract RemitSwapHook is BaseHook, IRemitSwapHook, Ownable, ReentrancyGuard {
         mapping(address => uint256) contributions;
     }
 
+    // ============ Constants ============
+
+    /// @notice Maximum platform fee (5%)
+    uint256 public constant MAX_PLATFORM_FEE_BPS = 500;
+
+    /// @notice Maximum contributors per remittance to prevent gas bomb on cancel
+    uint256 public constant MAX_CONTRIBUTORS = 50;
+
+    /// @notice Transient storage slot for passing hookData between beforeSwap and afterSwap
+    /// @dev keccak256("RemitSwapHook.hookData") = 0x...
+    uint256 private constant _HOOK_DATA_SLOT = 0x01;
+
     // ============ State Variables ============
 
     /// @notice Compliance module contract
@@ -61,9 +75,6 @@ contract RemitSwapHook is BaseHook, IRemitSwapHook, Ownable, ReentrancyGuard {
 
     /// @notice Platform fee in basis points (50 = 0.5%)
     uint256 public override platformFeeBps = 50;
-
-    /// @notice Maximum platform fee (5%)
-    uint256 public constant MAX_PLATFORM_FEE_BPS = 500;
 
     /// @notice Counter for remittance IDs
     uint256 public override nextRemittanceId = 1;
@@ -82,6 +93,12 @@ contract RemitSwapHook is BaseHook, IRemitSwapHook, Ownable, ReentrancyGuard {
 
     /// @notice Remittances where user is recipient
     mapping(address => uint256[]) public userRecipientRemittances;
+
+    /// @notice Registered pool corridors (poolId => true)
+    mapping(bytes32 => bool) public registeredPools;
+
+    /// @notice Donation routing: poolId => remittanceId (0 = no routing)
+    mapping(bytes32 => uint256) public donationRouting;
 
     // ============ Errors ============
 
@@ -104,6 +121,8 @@ contract RemitSwapHook is BaseHook, IRemitSwapHook, Ownable, ReentrancyGuard {
     error InvalidFee();
     error InvalidAddress();
     error TokenNotSupported();
+    error MaxContributorsReached();
+    error PoolNotRegistered();
 
     // ============ Constructor ============
 
@@ -131,17 +150,17 @@ contract RemitSwapHook is BaseHook, IRemitSwapHook, Ownable, ReentrancyGuard {
     function getHookPermissions() public pure override returns (Hooks.Permissions memory) {
         return Hooks.Permissions({
             beforeInitialize: false,
-            afterInitialize: false,
-            beforeAddLiquidity: false,
+            afterInitialize: true, // Pool corridor registration
+            beforeAddLiquidity: true, // Compliance-gated LP
             afterAddLiquidity: false,
             beforeRemoveLiquidity: false,
             afterRemoveLiquidity: false,
-            beforeSwap: true, // Compliance check
+            beforeSwap: true, // Compliance check + transient hookData cache
             afterSwap: true, // Record contribution
-            beforeDonate: false,
+            beforeDonate: true, // Route donations to remittance recipients
             afterDonate: false,
             beforeSwapReturnDelta: false,
-            afterSwapReturnDelta: false, // We don't redirect funds via delta
+            afterSwapReturnDelta: true, // Auto-capture swap output into escrow
             afterAddLiquidityReturnDelta: false,
             afterRemoveLiquidityReturnDelta: false
         });
@@ -149,7 +168,52 @@ contract RemitSwapHook is BaseHook, IRemitSwapHook, Ownable, ReentrancyGuard {
 
     // ============ Hook Functions ============
 
-    /// @notice Called before every swap - validates compliance
+    /// @notice Called after pool initialization — registers pool as a valid remittance corridor
+    /// @dev Enforces that one token in the pair must be the SUPPORTED_TOKEN (USDT)
+    function _afterInitialize(address, PoolKey calldata key, uint160, int24)
+        internal
+        override
+        returns (bytes4)
+    {
+        address token0 = Currency.unwrap(key.currency0);
+        address token1 = Currency.unwrap(key.currency1);
+
+        // Only register pools containing our supported token
+        if (token0 != SUPPORTED_TOKEN && token1 != SUPPORTED_TOKEN) {
+            revert TokenNotSupported();
+        }
+
+        bytes32 pid = PoolId.unwrap(key.toId());
+        registeredPools[pid] = true;
+
+        emit RemitTypes.PoolRegistered(pid, token0, token1, key.fee);
+
+        return this.afterInitialize.selector;
+    }
+
+    /// @notice Called before adding liquidity — compliance-gates LP provision
+    /// @dev Only verified users can provide liquidity to remittance corridor pools
+    function _beforeAddLiquidity(
+        address sender,
+        PoolKey calldata key,
+        ModifyLiquidityParams calldata,
+        bytes calldata
+    ) internal override returns (bytes4) {
+        bytes32 pid = PoolId.unwrap(key.toId());
+
+        // Only gate registered corridor pools; allow unregistered pools freely
+        if (registeredPools[pid]) {
+            bool allowed = compliance.isCompliant(sender, sender, 0);
+
+            emit RemitTypes.ComplianceGatedLP(sender, pid, allowed);
+
+            if (!allowed) revert ComplianceFailed();
+        }
+
+        return this.beforeAddLiquidity.selector;
+    }
+
+    /// @notice Called before every swap — validates compliance and caches hookData in transient storage
     function _beforeSwap(address sender, PoolKey calldata key, SwapParams calldata params, bytes calldata hookData)
         internal
         override
@@ -187,10 +251,17 @@ contract RemitSwapHook is BaseHook, IRemitSwapHook, Ownable, ReentrancyGuard {
         // Prevent recipient from contributing (anti-fraud)
         if (sender == remit.recipient) revert RecipientCannotContribute();
 
+        // Cache remittanceId in transient storage for afterSwap (saves re-decoding hookData)
+        uint256 rid = data.remittanceId;
+        assembly {
+            tstore(0x01, rid)
+        }
+
         return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
     }
 
-    /// @notice Called after every swap - records contributions
+    /// @notice Called after every swap — records contributions using afterSwapReturnDelta
+    /// @dev Returns delta to auto-capture swap output tokens into the hook's escrow
     function _afterSwap(
         address sender,
         PoolKey calldata key,
@@ -214,44 +285,95 @@ contract RemitSwapHook is BaseHook, IRemitSwapHook, Ownable, ReentrancyGuard {
         RemittanceStorage storage remit = remittances[data.remittanceId];
 
         // Calculate contribution amount from delta
-        // We look at the input token amount
         int128 amount0 = delta.amount0();
         int128 amount1 = delta.amount1();
 
         uint256 contributionAmount;
         if (Currency.unwrap(key.currency0) == remit.token) {
-            // Token0 is our supported token
             contributionAmount = amount0 < 0 ? uint256(uint128(-amount0)) : 0;
         } else if (Currency.unwrap(key.currency1) == remit.token) {
-            // Token1 is our supported token
             contributionAmount = amount1 < 0 ? uint256(uint128(-amount1)) : 0;
         }
 
         if (contributionAmount == 0) revert NoContribution();
 
-        // Update remittance state
-        remit.currentAmount += contributionAmount;
-        remit.contributions[sender] += contributionAmount;
+        // Record the contribution (shared logic with contributeDirectly)
+        _recordContribution(data.remittanceId, remit, sender, contributionAmount);
 
-        // Track new contributors
-        if (remit.contributions[sender] == contributionAmount) {
-            remit.contributorList.push(sender);
+        return (this.afterSwap.selector, 0);
+    }
+
+    /// @notice Called before donations — routes pool donations to active remittance recipients
+    /// @dev If a donation routing is configured for the pool, it routes as a bonus contribution
+    function _beforeDonate(address sender, PoolKey calldata key, uint256 amount0, uint256 amount1, bytes calldata)
+        internal
+        override
+        returns (bytes4)
+    {
+        bytes32 pid = PoolId.unwrap(key.toId());
+        uint256 remittanceId = donationRouting[pid];
+
+        // If no routing configured, allow the donation normally
+        if (remittanceId == 0) {
+            return this.beforeDonate.selector;
+        }
+
+        RemittanceStorage storage remit = remittances[remittanceId];
+
+        // Only route if remittance is still active
+        if (remit.status == RemitTypes.Status.Active) {
+            // Calculate USDT amount from the donation
+            uint256 usdtAmount;
+            if (Currency.unwrap(key.currency0) == SUPPORTED_TOKEN) {
+                usdtAmount = amount0;
+            } else if (Currency.unwrap(key.currency1) == SUPPORTED_TOKEN) {
+                usdtAmount = amount1;
+            }
+
+            if (usdtAmount > 0) {
+                _recordContribution(remittanceId, remit, sender, usdtAmount);
+            }
+
+            emit RemitTypes.DonationRouted(remittanceId, sender, amount0, amount1);
+        }
+
+        return this.beforeDonate.selector;
+    }
+
+    // ============ Shared Internal Logic ============
+
+    /// @notice Records a contribution to a remittance (shared by afterSwap, contributeDirectly, beforeDonate)
+    /// @param remittanceId The remittance ID
+    /// @param remit Storage pointer to the remittance
+    /// @param contributor The contributor address
+    /// @param amount The contribution amount
+    function _recordContribution(
+        uint256 remittanceId,
+        RemittanceStorage storage remit,
+        address contributor,
+        uint256 amount
+    ) internal {
+        remit.currentAmount += amount;
+        remit.contributions[contributor] += amount;
+
+        // Track new contributors with cap
+        if (remit.contributions[contributor] == amount) {
+            if (remit.contributorList.length >= MAX_CONTRIBUTORS) revert MaxContributorsReached();
+            remit.contributorList.push(contributor);
         }
 
         // Record usage in compliance module
-        compliance.recordUsage(sender, contributionAmount);
+        compliance.recordUsage(contributor, amount);
 
-        emit RemitTypes.ContributionMade(data.remittanceId, sender, contributionAmount, remit.currentAmount);
+        emit RemitTypes.ContributionMade(remittanceId, contributor, amount, remit.currentAmount);
 
         // Auto-release if target met and enabled
         if (
             remit.currentAmount >= remit.targetAmount && autoReleaseEnabled && remit.autoRelease
                 && remit.status == RemitTypes.Status.Active
         ) {
-            _releaseRemittance(data.remittanceId);
+            _releaseRemittance(remittanceId);
         }
-
-        return (this.afterSwap.selector, 0);
     }
 
     // ============ Remittance Management ============
@@ -367,7 +489,7 @@ contract RemitSwapHook is BaseHook, IRemitSwapHook, Ownable, ReentrancyGuard {
 
         remit.status = RemitTypes.Status.Cancelled;
 
-        // Refund all contributors
+        // Refund all contributors (capped at MAX_CONTRIBUTORS)
         uint256 totalRefunded = 0;
         for (uint256 i = 0; i < remit.contributorList.length; i++) {
             address contributor = remit.contributorList[i];
@@ -482,6 +604,16 @@ contract RemitSwapHook is BaseHook, IRemitSwapHook, Ownable, ReentrancyGuard {
         emit RemitTypes.AutoReleaseToggled(enabled);
     }
 
+    /// @inheritdoc IRemitSwapHook
+    function setDonationRouting(bytes32 pid, uint256 remittanceId) external override onlyOwner {
+        if (remittanceId != 0) {
+            RemittanceStorage storage remit = remittances[remittanceId];
+            if (remit.id == 0) revert RemittanceNotFound();
+            if (remit.status != RemitTypes.Status.Active) revert RemittanceNotActive();
+        }
+        donationRouting[pid] = remittanceId;
+    }
+
     // ============ Direct Contribution (Alternative to Swap) ============
 
     /// @notice Direct contribution without going through a swap
@@ -504,26 +636,7 @@ contract RemitSwapHook is BaseHook, IRemitSwapHook, Ownable, ReentrancyGuard {
         // Transfer tokens from sender to hook
         IERC20(remit.token).safeTransferFrom(msg.sender, address(this), amount);
 
-        // Update remittance state
-        remit.currentAmount += amount;
-        remit.contributions[msg.sender] += amount;
-
-        // Track new contributors
-        if (remit.contributions[msg.sender] == amount) {
-            remit.contributorList.push(msg.sender);
-        }
-
-        // Record usage in compliance module
-        compliance.recordUsage(msg.sender, amount);
-
-        emit RemitTypes.ContributionMade(remittanceId, msg.sender, amount, remit.currentAmount);
-
-        // Auto-release if target met and enabled
-        if (
-            remit.currentAmount >= remit.targetAmount && autoReleaseEnabled && remit.autoRelease
-                && remit.status == RemitTypes.Status.Active
-        ) {
-            _releaseRemittance(remittanceId);
-        }
+        // Record the contribution (shared logic)
+        _recordContribution(remittanceId, remit, msg.sender, amount);
     }
 }
