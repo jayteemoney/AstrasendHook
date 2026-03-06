@@ -25,16 +25,16 @@ contract RemitSwapHookTest is HookTest {
 
         assertTrue(permissions.beforeSwap);
         assertTrue(permissions.afterSwap);
+        assertTrue(permissions.afterSwapReturnDelta);
+        assertTrue(permissions.afterInitialize);
+        assertTrue(permissions.beforeAddLiquidity);
+        assertTrue(permissions.beforeDonate);
         assertFalse(permissions.beforeInitialize);
-        assertFalse(permissions.afterInitialize);
-        assertFalse(permissions.beforeAddLiquidity);
         assertFalse(permissions.afterAddLiquidity);
         assertFalse(permissions.beforeRemoveLiquidity);
         assertFalse(permissions.afterRemoveLiquidity);
-        assertFalse(permissions.beforeDonate);
         assertFalse(permissions.afterDonate);
         assertFalse(permissions.beforeSwapReturnDelta);
-        assertFalse(permissions.afterSwapReturnDelta);
     }
 
     // ============ Remittance Creation Tests ============
@@ -565,6 +565,92 @@ contract RemitSwapHookTest is HookTest {
 
         assertEq(hook.getContribution(remittanceId, bob), amount);
     }
+
+    // ============ New Hook Tests ============
+
+    function test_MaxContributors() public {
+        // Use a target within daily limit; give alice a high custom limit for creation
+        compliance.updateDailyLimit(alice, 10_000 * 1e6);
+        uint256 remittanceId = _createRemittance(alice, recipient, 5_000 * 1e6);
+
+        // Add MAX_CONTRIBUTORS unique contributors
+        for (uint256 i = 0; i < hook.MAX_CONTRIBUTORS(); i++) {
+            address contributor = makeAddr(string(abi.encodePacked("contributor", i)));
+            usdt.mint(contributor, 2 * 1e6);
+            compliance.addToAllowlist(contributor, 0);
+            vm.startPrank(contributor);
+            usdt.approve(address(hook), 2 * 1e6);
+            hook.contributeDirectly(remittanceId, 2 * 1e6);
+            vm.stopPrank();
+        }
+
+        // The 51st unique contributor should revert
+        address extraContributor = makeAddr("extra");
+        usdt.mint(extraContributor, 2 * 1e6);
+        compliance.addToAllowlist(extraContributor, 0);
+        vm.startPrank(extraContributor);
+        usdt.approve(address(hook), 2 * 1e6);
+        vm.expectRevert(abi.encodeWithSignature("MaxContributorsReached()"));
+        hook.contributeDirectly(remittanceId, 2 * 1e6);
+        vm.stopPrank();
+    }
+
+    function test_MaxContributors_ExistingContributorCanStillContribute() public {
+        compliance.updateDailyLimit(alice, 10_000 * 1e6);
+        uint256 remittanceId = _createRemittance(alice, recipient, 5_000 * 1e6);
+
+        // Fill up to MAX_CONTRIBUTORS
+        for (uint256 i = 0; i < hook.MAX_CONTRIBUTORS(); i++) {
+            address contributor = makeAddr(string(abi.encodePacked("contributor", i)));
+            usdt.mint(contributor, 10 * 1e6);
+            compliance.addToAllowlist(contributor, 0);
+            vm.startPrank(contributor);
+            usdt.approve(address(hook), type(uint256).max);
+            hook.contributeDirectly(remittanceId, 2 * 1e6);
+            vm.stopPrank();
+        }
+
+        // Existing contributor (first one) should still be able to contribute again
+        address firstContributor = makeAddr(string(abi.encodePacked("contributor", uint256(0))));
+        vm.prank(firstContributor);
+        hook.contributeDirectly(remittanceId, 2 * 1e6);
+
+        assertEq(hook.getContribution(remittanceId, firstContributor), 4 * 1e6);
+    }
+
+    function test_SetDonationRouting() public {
+        uint256 remittanceId = _createRemittance(alice, recipient, TARGET_AMOUNT);
+        bytes32 pid = bytes32(uint256(1));
+
+        hook.setDonationRouting(pid, remittanceId);
+        assertEq(hook.donationRouting(pid), remittanceId);
+    }
+
+    function test_SetDonationRouting_RevertIfRemittanceNotFound() public {
+        bytes32 pid = bytes32(uint256(1));
+
+        vm.expectRevert(abi.encodeWithSignature("RemittanceNotFound()"));
+        hook.setDonationRouting(pid, 999);
+    }
+
+    function test_SetDonationRouting_ClearRouting() public {
+        uint256 remittanceId = _createRemittance(alice, recipient, TARGET_AMOUNT);
+        bytes32 pid = bytes32(uint256(1));
+
+        hook.setDonationRouting(pid, remittanceId);
+        assertEq(hook.donationRouting(pid), remittanceId);
+
+        // Clear routing
+        hook.setDonationRouting(pid, 0);
+        assertEq(hook.donationRouting(pid), 0);
+    }
+
+    function test_RegisteredPools_InitiallyFalse() public view {
+        bytes32 pid = bytes32(uint256(1));
+        assertFalse(hook.registeredPools(pid));
+    }
+
+    // ============ Fuzz Tests ============
 
     function testFuzz_FeeCalculation(uint256 amount, uint256 feeBps) public {
         // Bound amount to within daily limit to pass compliance
