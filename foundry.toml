@@ -26,3 +26,9 @@ number_underscore = "thousands"
 quote_style = "double"
 tab_width = 4
 wrap_comments = true
+
+[rpc_endpoints]
+base = "${BASE_RPC_URL}"
+base-sepolia = "${BASE_SEPOLIA_RPC_URL}"
+unichain = "${UNICHAIN_RPC_URL}"
+unichain-sepolia = "${UNICHAIN_SEPOLIA_RPC_URL}"
