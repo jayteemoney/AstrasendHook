@@ -29,6 +29,12 @@ contract DeployRemitSwapHook is Script {
     // Base Sepolia PoolManager
     address constant BASE_SEPOLIA_POOL_MANAGER = 0x7Da1D65F8B249183667cdE74C5CBD46dD38AA829;
 
+    // Unichain Mainnet PoolManager
+    address constant UNICHAIN_POOL_MANAGER = 0x1F98400000000000000000000000000000000004;
+
+    // Unichain Sepolia PoolManager
+    address constant UNICHAIN_SEPOLIA_POOL_MANAGER = 0x00B036B58a818B1BC34d502D3fE730Db729e62AC;
+
     // USDT on Base
     address constant BASE_USDT = 0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2;
 
@@ -68,6 +74,17 @@ contract DeployRemitSwapHook is Script {
             supportedToken = vm.envOr("SUPPORTED_TOKEN", address(0));
             require(supportedToken != address(0), "Set SUPPORTED_TOKEN for testnet");
             console.log("Deploying to Base Sepolia");
+        } else if (chainId == 130) {
+            // Unichain Mainnet
+            poolManager = UNICHAIN_POOL_MANAGER;
+            supportedToken = vm.envAddress("SUPPORTED_TOKEN");
+            console.log("Deploying to Unichain Mainnet");
+        } else if (chainId == 1301) {
+            // Unichain Sepolia
+            poolManager = UNICHAIN_SEPOLIA_POOL_MANAGER;
+            supportedToken = vm.envOr("SUPPORTED_TOKEN", address(0));
+            require(supportedToken != address(0), "Set SUPPORTED_TOKEN for testnet");
+            console.log("Deploying to Unichain Sepolia");
         } else {
             // Local or custom network
             poolManager = vm.envAddress("POOL_MANAGER");
@@ -140,7 +157,10 @@ contract DeployRemitSwapHook is Script {
         returns (RemitSwapHook)
     {
         // Calculate required flags for hook permissions
-        uint160 flags = uint160(Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG);
+        uint160 flags = uint160(
+            Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG | Hooks.AFTER_SWAP_RETURNS_DELTA_FLAG
+                | Hooks.AFTER_INITIALIZE_FLAG | Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_DONATE_FLAG
+        );
 
         // Prepare constructor arguments
         bytes memory constructorArgs =
@@ -252,7 +272,10 @@ contract DeployToBaseSepolia is Script {
         console.log("PhoneNumberResolver:", address(phoneResolver));
 
         // 4. Deploy RemitSwapHook with address mining
-        uint160 flags = uint160(Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG);
+        uint160 flags = uint160(
+            Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG | Hooks.AFTER_SWAP_RETURNS_DELTA_FLAG
+                | Hooks.AFTER_INITIALIZE_FLAG | Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_DONATE_FLAG
+        );
         bytes memory constructorArgs =
             abi.encode(poolManager, compliance, phoneResolver, feeCollector, address(mockUsdt), deployer);
 
@@ -293,6 +316,143 @@ contract DeployToBaseSepolia is Script {
     }
 }
 
+/// @title DeployToUnichainSepolia
+/// @notice Convenience script for Unichain Sepolia testnet deployment
+/// @dev Run with: forge script script/Deploy.s.sol:DeployToUnichainSepolia --rpc-url $UNICHAIN_SEPOLIA_RPC_URL --broadcast
+contract DeployToUnichainSepolia is Script {
+    /// @dev Foundry's deterministic CREATE2 deployer used during broadcast
+    address constant CREATE2_DEPLOYER = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
+
+    function run() external {
+        console.log("Deploying to Unichain Sepolia...");
+
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        address deployer = vm.addr(deployerPrivateKey);
+        address feeCollector = vm.envOr("FEE_COLLECTOR", deployer);
+
+        address poolManager = 0x00B036B58a818B1BC34d502D3fE730Db729e62AC;
+
+        vm.startBroadcast(deployerPrivateKey);
+
+        // 1. Deploy MockUSDT for testnet
+        MockUSDT mockUsdt = new MockUSDT();
+        console.log("MockUSDT deployed at:", address(mockUsdt));
+
+        // Mint test tokens to deployer (1M USDT)
+        mockUsdt.mint(deployer, 1_000_000 * 1e6);
+        console.log("Minted 1,000,000 USDT to deployer");
+
+        // 2. Deploy AllowlistCompliance
+        AllowlistCompliance compliance = new AllowlistCompliance();
+        console.log("AllowlistCompliance:", address(compliance));
+
+        // 3. Deploy PhoneNumberResolver
+        PhoneNumberResolver phoneResolver = new PhoneNumberResolver();
+        console.log("PhoneNumberResolver:", address(phoneResolver));
+
+        // 4. Deploy RemitSwapHook with address mining
+        uint160 flags = uint160(
+            Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG | Hooks.AFTER_SWAP_RETURNS_DELTA_FLAG
+                | Hooks.AFTER_INITIALIZE_FLAG | Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_DONATE_FLAG
+        );
+        bytes memory constructorArgs =
+            abi.encode(poolManager, compliance, phoneResolver, feeCollector, address(mockUsdt), deployer);
+
+        (address hookAddress, bytes32 salt) =
+            HookMiner.find(CREATE2_DEPLOYER, flags, type(RemitSwapHook).creationCode, constructorArgs);
+
+        RemitSwapHook hook = new RemitSwapHook{ salt: salt }(
+            IPoolManager(poolManager),
+            ICompliance(address(compliance)),
+            IPhoneNumberResolver(address(phoneResolver)),
+            feeCollector,
+            address(mockUsdt),
+            deployer
+        );
+        require(address(hook) == hookAddress, "Hook address mismatch");
+        console.log("RemitSwapHook:", address(hook));
+
+        // 5. Configure
+        compliance.setHook(address(hook));
+        compliance.addToAllowlist(deployer, 0);
+
+        // 6. Approve hook to spend deployer's USDT
+        mockUsdt.approve(address(hook), type(uint256).max);
+
+        vm.stopBroadcast();
+
+        console.log("\n========== UNICHAIN SEPOLIA DEPLOYMENT ==========");
+        console.log("MockUSDT:           ", address(mockUsdt));
+        console.log("AllowlistCompliance:", address(compliance));
+        console.log("PhoneNumberResolver:", address(phoneResolver));
+        console.log("RemitSwapHook:      ", address(hook));
+        console.log("Fee Collector:      ", feeCollector);
+        console.log("=================================================");
+    }
+}
+
+/// @title DeployToUnichain
+/// @notice Convenience script for Unichain mainnet deployment
+/// @dev Run with: forge script script/Deploy.s.sol:DeployToUnichain --rpc-url unichain --broadcast
+contract DeployToUnichain is Script {
+    /// @dev Foundry's deterministic CREATE2 deployer used during broadcast
+    address constant CREATE2_DEPLOYER = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
+
+    function run() external {
+        console.log("!!! WARNING: Deploying to Unichain Mainnet !!!");
+
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        address feeCollector = vm.envOr("FEE_COLLECTOR", vm.addr(deployerPrivateKey));
+
+        address poolManager = 0x1F98400000000000000000000000000000000004;
+        address supportedToken = vm.envAddress("SUPPORTED_TOKEN");
+
+        console.log("Pool Manager:", poolManager);
+        console.log("Supported Token:", supportedToken);
+        console.log("Fee Collector:", feeCollector);
+
+        vm.startBroadcast(deployerPrivateKey);
+
+        // Deploy contracts
+        AllowlistCompliance compliance = new AllowlistCompliance();
+        console.log("AllowlistCompliance:", address(compliance));
+
+        PhoneNumberResolver phoneResolver = new PhoneNumberResolver();
+        console.log("PhoneNumberResolver:", address(phoneResolver));
+
+        // Deploy hook with address mining
+        address deployer = vm.addr(deployerPrivateKey);
+        uint160 flags = uint160(
+            Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG | Hooks.AFTER_SWAP_RETURNS_DELTA_FLAG
+                | Hooks.AFTER_INITIALIZE_FLAG | Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_DONATE_FLAG
+        );
+        bytes memory constructorArgs =
+            abi.encode(poolManager, compliance, phoneResolver, feeCollector, supportedToken, deployer);
+
+        (address hookAddress, bytes32 salt) =
+            HookMiner.find(CREATE2_DEPLOYER, flags, type(RemitSwapHook).creationCode, constructorArgs);
+
+        RemitSwapHook hook = new RemitSwapHook{ salt: salt }(
+            IPoolManager(poolManager),
+            ICompliance(address(compliance)),
+            IPhoneNumberResolver(address(phoneResolver)),
+            feeCollector,
+            supportedToken,
+            deployer
+        );
+        require(address(hook) == hookAddress, "Hook address mismatch");
+        console.log("RemitSwapHook:", address(hook));
+
+        // Configure
+        compliance.setHook(address(hook));
+        compliance.addToAllowlist(deployer, 0);
+
+        vm.stopBroadcast();
+
+        console.log("\n=== Unichain Deployment Complete ===");
+    }
+}
+
 /// @title DeployToBase
 /// @notice Convenience script for Base mainnet deployment
 /// @dev Run with: forge script script/Deploy.s.sol:DeployToBase --rpc-url base --broadcast
@@ -324,7 +484,10 @@ contract DeployToBase is Script {
 
         // Deploy hook with address mining
         address deployer = vm.addr(deployerPrivateKey);
-        uint160 flags = uint160(Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG);
+        uint160 flags = uint160(
+            Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG | Hooks.AFTER_SWAP_RETURNS_DELTA_FLAG
+                | Hooks.AFTER_INITIALIZE_FLAG | Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_DONATE_FLAG
+        );
         bytes memory constructorArgs =
             abi.encode(poolManager, compliance, phoneResolver, feeCollector, supportedToken, deployer);
 
