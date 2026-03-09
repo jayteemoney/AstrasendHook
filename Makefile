@@ -1,4 +1,4 @@
-# RemitSwapHook Makefile
+# AstraSendHook Makefile
 # Load .env if it exists
 -include .env
 
