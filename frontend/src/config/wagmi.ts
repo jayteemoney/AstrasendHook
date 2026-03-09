@@ -23,9 +23,9 @@ export const config = createConfig(
     },
     walletConnectProjectId:
       process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "",
-    appName: "RemitSwap",
+    appName: "AstraSend",
     appDescription:
       "Low-cost, compliant cross-border remittances powered by Uniswap v4",
-    appUrl: "https://remitswap.xyz",
+    appUrl: "https://astrasend.xyz",
   })
 );
