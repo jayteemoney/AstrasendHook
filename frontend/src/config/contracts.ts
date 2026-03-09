@@ -235,6 +235,74 @@ export const astraSendHookAbi = [
       { name: "refundedAmount", type: "uint256", indexed: false },
     ],
   },
+  {
+    type: "event",
+    name: "RemittanceExpired",
+    inputs: [
+      { name: "remittanceId", type: "uint256", indexed: true },
+      { name: "totalAmount", type: "uint256", indexed: false },
+    ],
+  },
+  // Admin Events
+  {
+    type: "event",
+    name: "ComplianceContractUpdated",
+    inputs: [
+      { name: "oldCompliance", type: "address", indexed: true },
+      { name: "newCompliance", type: "address", indexed: true },
+    ],
+  },
+  {
+    type: "event",
+    name: "PhoneResolverUpdated",
+    inputs: [
+      { name: "oldResolver", type: "address", indexed: true },
+      { name: "newResolver", type: "address", indexed: true },
+    ],
+  },
+  {
+    type: "event",
+    name: "FeeCollectorUpdated",
+    inputs: [
+      { name: "oldCollector", type: "address", indexed: true },
+      { name: "newCollector", type: "address", indexed: true },
+    ],
+  },
+  {
+    type: "event",
+    name: "PlatformFeeUpdated",
+    inputs: [
+      { name: "oldFeeBps", type: "uint256", indexed: false },
+      { name: "newFeeBps", type: "uint256", indexed: false },
+    ],
+  },
+  {
+    type: "event",
+    name: "AutoReleaseToggled",
+    inputs: [{ name: "enabled", type: "bool", indexed: false }],
+  },
+  // Custom Errors
+  { type: "error", name: "InvalidRecipient", inputs: [] },
+  { type: "error", name: "InvalidAmount", inputs: [] },
+  { type: "error", name: "InvalidExpiry", inputs: [] },
+  { type: "error", name: "SelfRemittance", inputs: [] },
+  { type: "error", name: "RemittanceNotFound", inputs: [] },
+  { type: "error", name: "RemittanceNotActive", inputs: [] },
+  { type: "error", name: "RemittanceExpired", inputs: [] },
+  { type: "error", name: "RemittanceNotExpired", inputs: [] },
+  { type: "error", name: "TargetNotMet", inputs: [] },
+  { type: "error", name: "OnlyCreator", inputs: [] },
+  { type: "error", name: "OnlyRecipient", inputs: [] },
+  { type: "error", name: "ComplianceFailed", inputs: [] },
+  { type: "error", name: "RecipientCannotContribute", inputs: [] },
+  { type: "error", name: "NoContribution", inputs: [] },
+  { type: "error", name: "InvalidHookData", inputs: [] },
+  { type: "error", name: "PhoneNotRegistered", inputs: [] },
+  { type: "error", name: "InvalidFee", inputs: [] },
+  { type: "error", name: "InvalidAddress", inputs: [] },
+  { type: "error", name: "TokenNotSupported", inputs: [] },
+  { type: "error", name: "MaxContributorsReached", inputs: [] },
+  { type: "error", name: "PoolNotRegistered", inputs: [] },
   // Hook view functions
   {
     type: "function",
@@ -365,6 +433,63 @@ export const astraSendHookAbi = [
     outputs: [],
     stateMutability: "nonpayable",
   },
+  // Hook events
+  {
+    type: "event",
+    name: "PoolRegistered",
+    inputs: [
+      { name: "poolId", type: "bytes32", indexed: true },
+      { name: "token0", type: "address", indexed: false },
+      { name: "token1", type: "address", indexed: false },
+      { name: "fee", type: "uint24", indexed: false },
+    ],
+  },
+  {
+    type: "event",
+    name: "DonationRouted",
+    inputs: [
+      { name: "remittanceId", type: "uint256", indexed: true },
+      { name: "donor", type: "address", indexed: true },
+      { name: "amount0", type: "uint256", indexed: false },
+      { name: "amount1", type: "uint256", indexed: false },
+    ],
+  },
+  {
+    type: "event",
+    name: "ComplianceGatedLP",
+    inputs: [
+      { name: "provider", type: "address", indexed: true },
+      { name: "poolId", type: "bytes32", indexed: true },
+      { name: "allowed", type: "bool", indexed: false },
+    ],
+  },
+  {
+    type: "event",
+    name: "OwnershipTransferred",
+    inputs: [
+      { name: "previousOwner", type: "address", indexed: true },
+      { name: "newOwner", type: "address", indexed: true },
+    ],
+  },
+  // Additional errors from compiled ABI
+  { type: "error", name: "HookNotImplemented", inputs: [] },
+  { type: "error", name: "NotPoolManager", inputs: [] },
+  {
+    type: "error",
+    name: "OwnableInvalidOwner",
+    inputs: [{ name: "owner", type: "address" }],
+  },
+  {
+    type: "error",
+    name: "OwnableUnauthorizedAccount",
+    inputs: [{ name: "account", type: "address" }],
+  },
+  { type: "error", name: "ReentrancyGuardReentrantCall", inputs: [] },
+  {
+    type: "error",
+    name: "SafeERC20FailedOperation",
+    inputs: [{ name: "token", type: "address" }],
+  },
 ] as const;
 
 export const complianceAbi = [
@@ -404,6 +529,14 @@ export const complianceAbi = [
     outputs: [{ name: "", type: "uint256" }],
     stateMutability: "view",
   },
+  // Compliance Errors
+  { type: "error", name: "NotAuthorized", inputs: [] },
+  { type: "error", name: "InvalidAddress", inputs: [] },
+  { type: "error", name: "InvalidAmount", inputs: [] },
+  { type: "error", name: "AlreadyOnAllowlist", inputs: [] },
+  { type: "error", name: "NotOnAllowlist", inputs: [] },
+  { type: "error", name: "AlreadyBlocked", inputs: [] },
+  { type: "error", name: "NotBlocked", inputs: [] },
 ] as const;
 
 export const phoneResolverAbi = [
@@ -435,6 +568,36 @@ export const phoneResolverAbi = [
     outputs: [{ name: "", type: "bool" }],
     stateMutability: "view",
   },
+  {
+    type: "function",
+    name: "getPhoneHash",
+    inputs: [{ name: "wallet", type: "address" }],
+    outputs: [{ name: "", type: "bytes32" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "resolveString",
+    inputs: [{ name: "phoneNumber", type: "string" }],
+    outputs: [{ name: "wallet", type: "address" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "registerPhoneString",
+    inputs: [
+      { name: "phoneNumber", type: "string" },
+      { name: "wallet", type: "address" },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  // Phone Resolver Errors
+  { type: "error", name: "InvalidWallet", inputs: [] },
+  { type: "error", name: "PhoneAlreadyRegistered", inputs: [] },
+  { type: "error", name: "PhoneNotRegistered", inputs: [] },
+  { type: "error", name: "WalletAlreadyHasPhone", inputs: [] },
+  { type: "error", name: "LengthMismatch", inputs: [] },
 ] as const;
 
 export const erc20Abi = [
