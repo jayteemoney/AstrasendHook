@@ -5,7 +5,7 @@ import { type Address } from "viem";
 export const CONTRACT_ADDRESSES: Record<
   number,
   {
-    remitSwapHook: Address;
+    astraSendHook: Address;
     compliance: Address;
     phoneResolver: Address;
     usdt: Address;
@@ -13,14 +13,14 @@ export const CONTRACT_ADDRESSES: Record<
 > = {
   // Base Sepolia (testnet)
   84532: {
-    remitSwapHook: "0x5d1e11e40f93F29496973b88284FafE77B8340C0" as Address,
-    compliance: "0xF2268d8133687e40AC174bCcA150677c42D74233" as Address,
-    phoneResolver: "0xEAE3b6033d744b8E0e817269df92004F3069bfB1" as Address,
-    usdt: "0x3f63c1AC1EBFf0babdb41fA1a6b7261D23bDC552" as Address,
+    astraSendHook: "0x90C4eDCF58d203d924C5cAdd8c8A07bc01e798e4" as Address,
+    compliance: "0xAC4038cD8EF3Bf8a37b4D910A6007A56167226AE" as Address,
+    phoneResolver: "0x7A4C3e1Cc3b7F70E2f7BeF4bf343270c17643544" as Address,
+    usdt: "0x778b10BA47EbFFA50a9368fB72b39Aa55B21C00E" as Address,
   },
   // Base Mainnet
   8453: {
-    remitSwapHook: "0x0000000000000000000000000000000000000000" as Address,
+    astraSendHook: "0x0000000000000000000000000000000000000000" as Address,
     compliance: "0x0000000000000000000000000000000000000000" as Address,
     phoneResolver: "0x0000000000000000000000000000000000000000" as Address,
     usdt: "0x0000000000000000000000000000000000000000" as Address,
