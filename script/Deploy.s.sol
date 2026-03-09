@@ -6,7 +6,7 @@ import { IPoolManager } from "v4-core/src/interfaces/IPoolManager.sol";
 import { Hooks } from "v4-core/src/libraries/Hooks.sol";
 import { HookMiner } from "v4-periphery/src/utils/HookMiner.sol";
 
-import { RemitSwapHook } from "../src/RemitSwapHook.sol";
+import { AstraSendHook } from "../src/AstraSendHook.sol";
 import { AllowlistCompliance } from "../src/compliance/AllowlistCompliance.sol";
 import { WorldcoinCompliance } from "../src/compliance/WorldcoinCompliance.sol";
 import { PhoneNumberResolver } from "../src/compliance/PhoneNumberResolver.sol";
@@ -14,10 +14,10 @@ import { ICompliance } from "../src/interfaces/ICompliance.sol";
 import { IPhoneNumberResolver } from "../src/interfaces/IPhoneNumberResolver.sol";
 import { IWorldID } from "../src/interfaces/IWorldID.sol";
 
-/// @title DeployRemitSwapHook
-/// @notice Deployment script for RemitSwapHook and supporting contracts
-/// @dev Run with: forge script script/Deploy.s.sol:DeployRemitSwapHook --rpc-url <RPC_URL> --broadcast
-contract DeployRemitSwapHook is Script {
+/// @title DeployAstraSendHook
+/// @notice Deployment script for AstraSendHook and supporting contracts
+/// @dev Run with: forge script script/Deploy.s.sol:DeployAstraSendHook --rpc-url <RPC_URL> --broadcast
+contract DeployAstraSendHook is Script {
     /// @dev Foundry's deterministic CREATE2 deployer used during broadcast
     address constant CREATE2_DEPLOYER = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
 
@@ -49,7 +49,7 @@ contract DeployRemitSwapHook is Script {
 
     ICompliance public compliance;
     PhoneNumberResolver public phoneResolver;
-    RemitSwapHook public hook;
+    AstraSendHook public hook;
 
     // ============ Main Deployment Function ============
 
@@ -104,7 +104,7 @@ contract DeployRemitSwapHook is Script {
         // 1. Deploy Compliance module (allowlist or worldcoin)
         if (keccak256(bytes(complianceType)) == keccak256("worldcoin")) {
             address worldIdRouter = vm.envOr("WORLD_ID_ROUTER", OPTIMISM_WORLD_ID_ROUTER);
-            string memory worldAppId = vm.envOr("WORLD_APP_ID", string("remitswap"));
+            string memory worldAppId = vm.envOr("WORLD_APP_ID", string("astrasend"));
             WorldcoinCompliance worldcoinCompliance = new WorldcoinCompliance(
                 IWorldID(worldIdRouter),
                 worldAppId
@@ -121,10 +121,10 @@ contract DeployRemitSwapHook is Script {
         phoneResolver = new PhoneNumberResolver();
         console.log("PhoneNumberResolver deployed at:", address(phoneResolver));
 
-        // 3. Deploy RemitSwapHook with address mining
+        // 3. Deploy AstraSendHook with address mining
         address deployer = vm.addr(deployerPrivateKey);
         hook = _deployHook(IPoolManager(poolManager), feeCollector, supportedToken, deployer);
-        console.log("RemitSwapHook deployed at:", address(hook));
+        console.log("AstraSendHook deployed at:", address(hook));
 
         // 4. Configure compliance to accept hook
         if (keccak256(bytes(complianceType)) == keccak256("worldcoin")) {
@@ -146,7 +146,7 @@ contract DeployRemitSwapHook is Script {
         console.log("Compliance Type:", complianceType);
         console.log("Compliance:", address(compliance));
         console.log("PhoneNumberResolver:", address(phoneResolver));
-        console.log("RemitSwapHook:", address(hook));
+        console.log("AstraSendHook:", address(hook));
         console.log("=========================================\n");
     }
 
@@ -154,7 +154,7 @@ contract DeployRemitSwapHook is Script {
 
     function _deployHook(IPoolManager poolManager, address feeCollector, address supportedToken, address initialOwner)
         internal
-        returns (RemitSwapHook)
+        returns (AstraSendHook)
     {
         // Calculate required flags for hook permissions
         uint160 flags = uint160(
@@ -170,13 +170,13 @@ contract DeployRemitSwapHook is Script {
         console.log("Mining hook address with flags:", flags);
 
         (address hookAddress, bytes32 salt) =
-            HookMiner.find(CREATE2_DEPLOYER, flags, type(RemitSwapHook).creationCode, constructorArgs);
+            HookMiner.find(CREATE2_DEPLOYER, flags, type(AstraSendHook).creationCode, constructorArgs);
 
         console.log("Found valid hook address:", hookAddress);
         console.log("Using salt:", vm.toString(salt));
 
         // Deploy the hook at the computed address
-        RemitSwapHook newHook = new RemitSwapHook{ salt: salt }(
+        AstraSendHook newHook = new AstraSendHook{ salt: salt }(
             poolManager,
             ICompliance(address(compliance)),
             IPhoneNumberResolver(address(phoneResolver)),
