@@ -25,6 +25,20 @@ export const CONTRACT_ADDRESSES: Record<
     phoneResolver: "0x0000000000000000000000000000000000000000" as Address,
     usdt: "0x0000000000000000000000000000000000000000" as Address,
   },
+  // Unichain Sepolia (testnet)
+  1301: {
+    astraSendHook: "0xbC37002Ad169c6f3b39319eECAd65a7364eEd8e4" as Address,
+    compliance: "0x61583daD9B340FF50eb6CcA6232Da15B0850946F" as Address,
+    phoneResolver: "0x012D911Dbc11232472A6AAF6b51E29A0C5929cC5" as Address,
+    usdt: "0x6F491FaBdEc72fD14e9E014f50B2ffF61C508bf1" as Address,
+  },
+  // Unichain Mainnet
+  130: {
+    astraSendHook: "0x0000000000000000000000000000000000000000" as Address,
+    compliance: "0x0000000000000000000000000000000000000000" as Address,
+    phoneResolver: "0x0000000000000000000000000000000000000000" as Address,
+    usdt: "0x0000000000000000000000000000000000000000" as Address,
+  },
 };
 
 export function getContracts(chainId: number) {
