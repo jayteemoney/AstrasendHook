@@ -430,9 +430,9 @@ contract DeployToUnichain is Script {
             abi.encode(poolManager, compliance, phoneResolver, feeCollector, supportedToken, deployer);
 
         (address hookAddress, bytes32 salt) =
-            HookMiner.find(CREATE2_DEPLOYER, flags, type(RemitSwapHook).creationCode, constructorArgs);
+            HookMiner.find(CREATE2_DEPLOYER, flags, type(AstraSendHook).creationCode, constructorArgs);
 
-        RemitSwapHook hook = new RemitSwapHook{ salt: salt }(
+        AstraSendHook hook = new AstraSendHook{ salt: salt }(
             IPoolManager(poolManager),
             ICompliance(address(compliance)),
             IPhoneNumberResolver(address(phoneResolver)),
@@ -441,7 +441,7 @@ contract DeployToUnichain is Script {
             deployer
         );
         require(address(hook) == hookAddress, "Hook address mismatch");
-        console.log("RemitSwapHook:", address(hook));
+        console.log("AstraSendHook:", address(hook));
 
         // Configure
         compliance.setHook(address(hook));
@@ -492,9 +492,9 @@ contract DeployToBase is Script {
             abi.encode(poolManager, compliance, phoneResolver, feeCollector, supportedToken, deployer);
 
         (address hookAddress, bytes32 salt) =
-            HookMiner.find(CREATE2_DEPLOYER, flags, type(RemitSwapHook).creationCode, constructorArgs);
+            HookMiner.find(CREATE2_DEPLOYER, flags, type(AstraSendHook).creationCode, constructorArgs);
 
-        RemitSwapHook hook = new RemitSwapHook{ salt: salt }(
+        AstraSendHook hook = new AstraSendHook{ salt: salt }(
             IPoolManager(poolManager),
             ICompliance(address(compliance)),
             IPhoneNumberResolver(address(phoneResolver)),
@@ -503,7 +503,7 @@ contract DeployToBase is Script {
             deployer
         );
         require(address(hook) == hookAddress, "Hook address mismatch");
-        console.log("RemitSwapHook:", address(hook));
+        console.log("AstraSendHook:", address(hook));
 
         // Configure
         compliance.setHook(address(hook));
