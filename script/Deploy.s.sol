@@ -350,7 +350,7 @@ contract DeployToUnichainSepolia is Script {
         PhoneNumberResolver phoneResolver = new PhoneNumberResolver();
         console.log("PhoneNumberResolver:", address(phoneResolver));
 
-        // 4. Deploy RemitSwapHook with address mining
+        // 4. Deploy AstraSendHook with address mining
         uint160 flags = uint160(
             Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG | Hooks.AFTER_SWAP_RETURNS_DELTA_FLAG
                 | Hooks.AFTER_INITIALIZE_FLAG | Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_DONATE_FLAG
@@ -359,9 +359,9 @@ contract DeployToUnichainSepolia is Script {
             abi.encode(poolManager, compliance, phoneResolver, feeCollector, address(mockUsdt), deployer);
 
         (address hookAddress, bytes32 salt) =
-            HookMiner.find(CREATE2_DEPLOYER, flags, type(RemitSwapHook).creationCode, constructorArgs);
+            HookMiner.find(CREATE2_DEPLOYER, flags, type(AstraSendHook).creationCode, constructorArgs);
 
-        RemitSwapHook hook = new RemitSwapHook{ salt: salt }(
+        AstraSendHook hook = new AstraSendHook{ salt: salt }(
             IPoolManager(poolManager),
             ICompliance(address(compliance)),
             IPhoneNumberResolver(address(phoneResolver)),
@@ -370,7 +370,7 @@ contract DeployToUnichainSepolia is Script {
             deployer
         );
         require(address(hook) == hookAddress, "Hook address mismatch");
-        console.log("RemitSwapHook:", address(hook));
+        console.log("AstraSendHook:", address(hook));
 
         // 5. Configure
         compliance.setHook(address(hook));
@@ -385,7 +385,7 @@ contract DeployToUnichainSepolia is Script {
         console.log("MockUSDT:           ", address(mockUsdt));
         console.log("AllowlistCompliance:", address(compliance));
         console.log("PhoneNumberResolver:", address(phoneResolver));
-        console.log("RemitSwapHook:      ", address(hook));
+        console.log("AstraSendHook:      ", address(hook));
         console.log("Fee Collector:      ", feeCollector);
         console.log("=================================================");
     }
