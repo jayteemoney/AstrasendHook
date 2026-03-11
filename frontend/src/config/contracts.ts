@@ -529,17 +529,174 @@ export const complianceAbi = [
     outputs: [{ name: "", type: "uint256" }],
     stateMutability: "view",
   },
+  // Admin role management (owner only)
+  {
+    type: "function",
+    name: "addAdmin",
+    inputs: [{ name: "admin", type: "address" }],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "removeAdmin",
+    inputs: [{ name: "admin", type: "address" }],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "admins",
+    inputs: [{ name: "", type: "address" }],
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "view",
+  },
+  // Owner-only config functions
+  {
+    type: "function",
+    name: "setHook",
+    inputs: [{ name: "_hook", type: "address" }],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "setDefaultDailyLimit",
+    inputs: [{ name: "newLimit", type: "uint256" }],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "setMinimumAmount",
+    inputs: [{ name: "newMinimum", type: "uint256" }],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "updateDailyLimit",
+    inputs: [
+      { name: "account", type: "address" },
+      { name: "newLimit", type: "uint256" },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  // Admin operational functions (owner or admin)
+  {
+    type: "function",
+    name: "addToBlocklist",
+    inputs: [{ name: "account", type: "address" }],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "removeFromBlocklist",
+    inputs: [{ name: "account", type: "address" }],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  // View state variables
+  {
+    type: "function",
+    name: "hook",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "defaultDailyLimit",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "minimumAmount",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "blocklist",
+    inputs: [{ name: "", type: "address" }],
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "customDailyLimits",
+    inputs: [{ name: "", type: "address" }],
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+  },
+  // Events
+  {
+    type: "event",
+    name: "AdminAdded",
+    inputs: [{ name: "admin", type: "address", indexed: true }],
+  },
+  {
+    type: "event",
+    name: "AdminRemoved",
+    inputs: [{ name: "admin", type: "address", indexed: true }],
+  },
+  {
+    type: "event",
+    name: "AddedToBlocklist",
+    inputs: [{ name: "account", type: "address", indexed: true }],
+  },
+  {
+    type: "event",
+    name: "RemovedFromBlocklist",
+    inputs: [{ name: "account", type: "address", indexed: true }],
+  },
+  {
+    type: "event",
+    name: "DailyLimitUpdated",
+    inputs: [
+      { name: "account", type: "address", indexed: true },
+      { name: "newLimit", type: "uint256", indexed: false },
+    ],
+  },
+  {
+    type: "event",
+    name: "DefaultDailyLimitUpdated",
+    inputs: [
+      { name: "oldLimit", type: "uint256", indexed: false },
+      { name: "newLimit", type: "uint256", indexed: false },
+    ],
+  },
+  {
+    type: "event",
+    name: "MinimumAmountUpdated",
+    inputs: [
+      { name: "oldAmount", type: "uint256", indexed: false },
+      { name: "newAmount", type: "uint256", indexed: false },
+    ],
+  },
+  {
+    type: "event",
+    name: "HookUpdated",
+    inputs: [
+      { name: "oldHook", type: "address", indexed: true },
+      { name: "newHook", type: "address", indexed: true },
+    ],
+  },
   // Compliance Errors
   { type: "error", name: "NotAuthorized", inputs: [] },
   { type: "error", name: "InvalidAddress", inputs: [] },
   { type: "error", name: "InvalidAmount", inputs: [] },
-  { type: "error", name: "AlreadyOnAllowlist", inputs: [] },
-  { type: "error", name: "NotOnAllowlist", inputs: [] },
   { type: "error", name: "AlreadyBlocked", inputs: [] },
   { type: "error", name: "NotBlocked", inputs: [] },
 ] as const;
 
 export const phoneResolverAbi = [
+  // View functions
   {
     type: "function",
     name: "resolve",
@@ -584,6 +741,14 @@ export const phoneResolverAbi = [
   },
   {
     type: "function",
+    name: "admins",
+    inputs: [{ name: "", type: "address" }],
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "view",
+  },
+  // User self-registration (caller must be the wallet being registered)
+  {
+    type: "function",
     name: "registerPhoneString",
     inputs: [
       { name: "phoneNumber", type: "string" },
@@ -592,12 +757,115 @@ export const phoneResolverAbi = [
     outputs: [],
     stateMutability: "nonpayable",
   },
-  // Phone Resolver Errors
+  {
+    type: "function",
+    name: "updateMyWallet",
+    inputs: [{ name: "newWallet", type: "address" }],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "unregisterMyPhone",
+    inputs: [],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  // Admin functions
+  {
+    type: "function",
+    name: "addAdmin",
+    inputs: [{ name: "admin", type: "address" }],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "removeAdmin",
+    inputs: [{ name: "admin", type: "address" }],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "registerPhone",
+    inputs: [
+      { name: "phoneHash", type: "bytes32" },
+      { name: "wallet", type: "address" },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "batchRegister",
+    inputs: [
+      { name: "phoneHashes", type: "bytes32[]" },
+      { name: "wallets", type: "address[]" },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "updatePhoneWallet",
+    inputs: [
+      { name: "phoneHash", type: "bytes32" },
+      { name: "newWallet", type: "address" },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "unregisterPhone",
+    inputs: [{ name: "phoneHash", type: "bytes32" }],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  // Events
+  {
+    type: "event",
+    name: "PhoneRegistered",
+    inputs: [
+      { name: "phoneHash", type: "bytes32", indexed: true },
+      { name: "wallet", type: "address", indexed: true },
+    ],
+  },
+  {
+    type: "event",
+    name: "PhoneUnregistered",
+    inputs: [
+      { name: "phoneHash", type: "bytes32", indexed: true },
+      { name: "wallet", type: "address", indexed: true },
+    ],
+  },
+  {
+    type: "event",
+    name: "PhoneUpdated",
+    inputs: [
+      { name: "phoneHash", type: "bytes32", indexed: true },
+      { name: "oldWallet", type: "address", indexed: true },
+      { name: "newWallet", type: "address", indexed: true },
+    ],
+  },
+  {
+    type: "event",
+    name: "AdminAdded",
+    inputs: [{ name: "admin", type: "address", indexed: true }],
+  },
+  {
+    type: "event",
+    name: "AdminRemoved",
+    inputs: [{ name: "admin", type: "address", indexed: true }],
+  },
+  // Errors
   { type: "error", name: "InvalidWallet", inputs: [] },
   { type: "error", name: "PhoneAlreadyRegistered", inputs: [] },
   { type: "error", name: "PhoneNotRegistered", inputs: [] },
   { type: "error", name: "WalletAlreadyHasPhone", inputs: [] },
   { type: "error", name: "LengthMismatch", inputs: [] },
+  { type: "error", name: "NotAuthorized", inputs: [] },
 ] as const;
 
 export const erc20Abi = [

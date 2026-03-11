@@ -1,10 +1,10 @@
-# RemitSwapHook
+# AstraSendHook
 
 A Uniswap v4 hook enabling low-cost, compliant cross-border remittances with group funding capabilities.
 
 ## Overview
 
-RemitSwapHook solves the high-cost problem of cross-border remittances (averaging 6.2% globally) by leveraging Uniswap v4's hook architecture to provide:
+AstraSendHook solves the high-cost problem of cross-border remittances (averaging 6.2% globally) by leveraging Uniswap v4's hook architecture to provide:
 
 - **< 1% total fees** vs 6-15% traditional services
 - **On-chain compliance** via allowlist or Worldcoin World ID
@@ -39,16 +39,11 @@ RemitSwapHook solves the high-cost problem of cross-border remittances (averagin
 
 Both modules implement `ICompliance` and can be hot-swapped via `setCompliance()`.
 
-### Phone Integration
-- **Phone-to-Address Resolution** - Send to phone numbers instead of addresses
-- **Privacy-Preserving** - Phone numbers stored as keccak256 hashes
-- **Batch Registration** - Bulk onboarding support
-
 ## Architecture
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│                      RemitSwapHook.sol                       │
+│                      AstraSendHook.sol                       │
 │                    (Main Hook Contract)                      │
 ├──────────────────────────────────────────────────────────────┤
 │  - beforeSwap()     → Compliance verification                │
@@ -84,8 +79,8 @@ Both modules implement `ICompliance` and can be hot-swapped via `setCompliance()
 
 ```bash
 # Clone the repository
-git clone https://github.com/jayteemoney/remitswap-hook.git
-cd remitswap-hook
+git clone https://github.com/jayteemoney/Astrasendhook.git
+cd Astrasendhook
 
 # Install dependencies
 forge install
@@ -122,20 +117,6 @@ usdt.approve(address(hook), amount);
 hook.contributeDirectly(remittanceId, 100 * 1e6); // Contribute 100 USDT
 ```
 
-### Creating Remittance by Phone Number
-
-```solidity
-// Create remittance using recipient's phone number
-bytes32 phoneHash = keccak256(abi.encodePacked("+254712345678"));
-uint256 remittanceId = hook.createRemittanceByPhone(
-    phoneHash,
-    1000 * 1e6,
-    0,
-    bytes32(0),
-    true
-);
-```
-
 ### Releasing Funds (Manual)
 
 ```solidity
@@ -155,7 +136,7 @@ hook.cancelRemittance(remittanceId);
 ### Using AllowlistCompliance (default)
 
 ```bash
-PRIVATE_KEY=0x... FEE_COLLECTOR=0x... forge script script/Deploy.s.sol:DeployRemitSwapHook \
+PRIVATE_KEY=0x... FEE_COLLECTOR=0x... forge script script/Deploy.s.sol:DeployAstraSendHook \
   --rpc-url base-sepolia --broadcast
 ```
 
@@ -163,15 +144,15 @@ PRIVATE_KEY=0x... FEE_COLLECTOR=0x... forge script script/Deploy.s.sol:DeployRem
 
 ```bash
 PRIVATE_KEY=0x... FEE_COLLECTOR=0x... COMPLIANCE_TYPE=worldcoin \
-  WORLD_ID_ROUTER=0x... WORLD_APP_ID=remitswap \
-  forge script script/Deploy.s.sol:DeployRemitSwapHook \
+  WORLD_ID_ROUTER=0x... WORLD_APP_ID=astrasend \
+  forge script script/Deploy.s.sol:DeployAstraSendHook \
   --rpc-url base-sepolia --broadcast
 ```
 
 ### Demo Setup
 
 ```bash
-PRIVATE_KEY=0x... HOOK_ADDRESS=0x... COMPLIANCE_ADDRESS=0x... PHONE_RESOLVER_ADDRESS=0x... \
+PRIVATE_KEY=0x... HOOK_ADDRESS=0x... COMPLIANCE_ADDRESS=0x... \
   forge script script/SetupDemo.s.sol:SetupDemo --rpc-url base-sepolia --broadcast
 ```
 
@@ -180,16 +161,24 @@ PRIVATE_KEY=0x... HOOK_ADDRESS=0x... COMPLIANCE_ADDRESS=0x... PHONE_RESOLVER_ADD
 ### Base Sepolia (Testnet)
 | Contract | Address |
 |----------|---------|
-| RemitSwapHook | `TBD` |
-| Compliance | `TBD` |
-| PhoneNumberResolver | `TBD` |
+| AstraSendHook | `0x90C4eDCF58d203d924C5cAdd8c8A07bc01e798e4` |
+| OpenCompliance | `0xAC4038cD8EF3Bf8a37b4D910A6007A56167226AE` |
+| PhoneNumberResolver | `0x7A4C3e1Cc3b7F70E2f7BeF4bf343270c17643544` |
+| Mock USDT | `0x778b10BA47EbFFA50a9368fB72b39Aa55B21C00E` |
+
+### Unichain Sepolia (Testnet)
+| Contract | Address |
+|----------|---------|
+| AstraSendHook | `0xbC37002Ad169c6f3b39319eECAd65a7364eEd8e4` |
+| OpenCompliance | `0x61583daD9B340FF50eb6CcA6232Da15B0850946F` |
+| PhoneNumberResolver | `0x012D911Dbc11232472A6AAF6b51E29A0C5929cC5` |
+| Mock USDT | `0x6F491FaBdEc72fD14e9E014f50B2ffF61C508bf1` |
 
 ### Base Mainnet
 | Contract | Address |
 |----------|---------|
-| RemitSwapHook | `TBD` |
+| AstraSendHook | `TBD` |
 | Compliance | `TBD` |
-| PhoneNumberResolver | `TBD` |
 
 ## Testing
 
@@ -201,7 +190,7 @@ forge test
 forge test -vvv
 
 # Run specific test suite
-forge test --match-contract RemitSwapHookTest
+forge test --match-contract AstraSendHookTest
 forge test --match-contract WorldcoinComplianceTest
 forge test --match-contract InvariantTest
 
@@ -216,7 +205,7 @@ forge test --gas-report
 
 | Test Suite | Tests | Description |
 |------------|-------|-------------|
-| RemitSwapHookTest | 45 | Core hook functionality, error cases, fuzz tests |
+| AstraSendHookTest | 45 | Core hook functionality, error cases, fuzz tests |
 | ComplianceTest | 37 | AllowlistCompliance: allowlist, blocklist, daily limits |
 | PhoneResolverTest | 34 | Phone registration, resolution, batch operations |
 | IntegrationTest | 21 | Full end-to-end remittance flows, stress tests |
@@ -257,48 +246,51 @@ forge test --gas-report
 
 ### Directory Structure
 ```
-remitswap-hook/
+Astrasendhook/
 ├── src/
-│   ├── RemitSwapHook.sol              # Main hook contract (529 LOC)
+│   ├── AstraSendHook.sol              # Main hook contract
 │   ├── compliance/
-│   │   ├── AllowlistCompliance.sol    # Phase 1: Allowlist KYC (243 LOC)
+│   │   ├── OpenCompliance.sol         # Testnet: permissionless + blocklist + daily limits
+│   │   ├── AllowlistCompliance.sol    # Phase 1: Allowlist KYC
 │   │   ├── WorldcoinCompliance.sol    # Phase 2: World ID verification
-│   │   └── PhoneNumberResolver.sol    # Phone-to-address mapping (165 LOC)
+│   │   └── PhoneNumberResolver.sol    # Phone-to-address mapping (on-chain registry)
 │   ├── interfaces/
 │   │   ├── ICompliance.sol            # Compliance interface
 │   │   ├── IPhoneNumberResolver.sol   # Phone resolver interface
-│   │   ├── IRemitSwapHook.sol         # Hook interface
+│   │   ├── IAstraSendHook.sol         # Hook interface
 │   │   └── IWorldID.sol               # World ID interface
 │   └── libraries/
 │       └── RemitTypes.sol             # Shared types and events
+├── frontend/                          # Next.js 15 app
+│   └── src/
+│       ├── app/                       # Pages: /, /send, /receive, /dashboard, /history
+│       ├── components/                # UI components + AI assistant
+│       ├── hooks/                     # wagmi contract hooks
+│       └── config/contracts.ts        # ABIs + deployed addresses
 ├── test/
-│   ├── RemitSwapHook.t.sol            # Hook tests (45 tests)
-│   ├── Compliance.t.sol               # AllowlistCompliance tests (37 tests)
-│   ├── WorldcoinCompliance.t.sol      # WorldcoinCompliance tests (41 tests)
-│   ├── PhoneResolver.t.sol            # Phone resolver tests (34 tests)
-│   ├── Integration.t.sol              # Integration tests (21 tests)
-│   ├── Invariants.t.sol               # Invariant tests (4 invariants)
-│   ├── handlers/
-│   │   └── RemitHandler.sol           # Handler for invariant testing
-│   ├── mocks/
-│   │   └── MockWorldID.sol            # Mock World ID for testing
-│   └── utils/
-│       └── HookTest.sol               # Base test utilities
+│   ├── AstraSendHook.t.sol            # Hook tests
+│   ├── OpenCompliance.t.sol           # OpenCompliance tests
+│   ├── WorldcoinCompliance.t.sol      # WorldcoinCompliance tests
+│   ├── Integration.t.sol              # End-to-end tests
+│   ├── Invariants.t.sol               # Invariant tests
+│   ├── handlers/RemitHandler.sol      # Invariant handler
+│   └── utils/HookTest.sol             # Base test utilities
 └── script/
-    ├── Deploy.s.sol                   # Deployment (allowlist + worldcoin)
-    └── SetupDemo.s.sol                # Demo setup + utility scripts
+    ├── Deploy.s.sol                   # Deployment (testnet + mainnet, all compliance types)
+    └── SetupDemo.s.sol                # Demo setup utilities
 ```
 
 ## Roadmap
 
 - [x] Phase 1: Project Setup
 - [x] Phase 2: Core Contracts
-- [x] Phase 3: Testing (182 tests)
+- [x] Phase 3: Testing
 - [x] Phase 4: Deployment Scripts
 - [x] Phase 5: WorldcoinCompliance
-- [ ] Phase 6: Testnet Deployment (Base Sepolia)
-- [ ] Phase 7: Mainnet Deployment (Base)
-- [ ] Phase 8: Frontend / Subgraph
+- [x] Phase 6: Testnet Deployment (Base Sepolia + Unichain Sepolia)
+- [x] Phase 7: Frontend (Next.js, wagmi, AI assistant, real-time events)
+- [ ] Phase 8: Mainnet Deployment (Base + Unichain)
+- [ ] Phase 9: Subgraph / Analytics
 
 ## Contributing
 

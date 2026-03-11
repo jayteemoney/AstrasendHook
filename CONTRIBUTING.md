@@ -1,4 +1,4 @@
-# RemitSwapHook - Project Guide
+# AstraSendHook - Project Guide
 
 ## What is this?
 A Uniswap v4 hook for cross-border remittances. Built with Foundry, Solidity 0.8.26, targeting Base chain.
@@ -12,17 +12,17 @@ make test-gas        # Gas report
 ```
 
 ## Project Structure
-- `src/RemitSwapHook.sol` - Main hook contract (beforeSwap/afterSwap + escrow)
+- `src/AstraSendHook.sol` - Main hook contract (beforeSwap/afterSwap + escrow)
 - `src/compliance/` - Pluggable compliance modules (AllowlistCompliance, WorldcoinCompliance)
 - `src/compliance/PhoneNumberResolver.sol` - Phone-to-address mapping
-- `src/interfaces/` - All interfaces (ICompliance, IWorldID, IRemitSwapHook, IPhoneNumberResolver)
+- `src/interfaces/` - All interfaces (ICompliance, IWorldID, IAstraSendHook, IPhoneNumberResolver)
 - `src/libraries/RemitTypes.sol` - Shared types, enums, events
 - `test/utils/HookTest.sol` - Base test contract with setup helpers
 - `script/Deploy.s.sol` - Deployment (supports COMPLIANCE_TYPE=allowlist|worldcoin)
 
 ## Key Patterns
 - Hook address must encode permissions in lowest bits (uses HookMiner.find for salt)
-- Constructor: `RemitSwapHook(poolManager, compliance, phoneResolver, feeCollector, supportedToken)`
+- Constructor: `AstraSendHook(poolManager, compliance, phoneResolver, feeCollector, supportedToken)`
 - All compliance modules implement `ICompliance` and are hot-swappable via `setCompliance()`
 - Tests use `vm.prank`, `vm.warp`, `vm.expectRevert` from forge-std
 
