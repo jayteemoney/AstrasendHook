@@ -7,6 +7,7 @@ import { Hooks } from "v4-core/src/libraries/Hooks.sol";
 import { HookMiner } from "v4-periphery/src/utils/HookMiner.sol";
 
 import { AstraSendHook } from "../src/AstraSendHook.sol";
+import { OpenCompliance } from "../src/compliance/OpenCompliance.sol";
 import { AllowlistCompliance } from "../src/compliance/AllowlistCompliance.sol";
 import { WorldcoinCompliance } from "../src/compliance/WorldcoinCompliance.sol";
 import { PhoneNumberResolver } from "../src/compliance/PhoneNumberResolver.sol";
@@ -263,9 +264,9 @@ contract DeployToBaseSepolia is Script {
         mockUsdt.mint(deployer, 1_000_000 * 1e6);
         console.log("Minted 1,000,000 USDT to deployer");
 
-        // 2. Deploy AllowlistCompliance
-        AllowlistCompliance compliance = new AllowlistCompliance();
-        console.log("AllowlistCompliance:", address(compliance));
+        // 2. Deploy OpenCompliance (everyone can send immediately)
+        OpenCompliance compliance = new OpenCompliance();
+        console.log("OpenCompliance:", address(compliance));
 
         // 3. Deploy PhoneNumberResolver
         PhoneNumberResolver phoneResolver = new PhoneNumberResolver();
@@ -293,9 +294,8 @@ contract DeployToBaseSepolia is Script {
         require(address(hook) == hookAddress, "Hook address mismatch");
         console.log("AstraSendHook:", address(hook));
 
-        // 5. Configure
+        // 5. Configure — just set the hook, no allowlist needed
         compliance.setHook(address(hook));
-        compliance.addToAllowlist(deployer, 0);
 
         // 6. Approve hook to spend deployer's USDT
         mockUsdt.approve(address(hook), type(uint256).max);
@@ -304,14 +304,14 @@ contract DeployToBaseSepolia is Script {
 
         console.log("\n========== BASE SEPOLIA DEPLOYMENT ==========");
         console.log("MockUSDT:           ", address(mockUsdt));
-        console.log("AllowlistCompliance:", address(compliance));
+        console.log("OpenCompliance:     ", address(compliance));
         console.log("PhoneNumberResolver:", address(phoneResolver));
         console.log("AstraSendHook:      ", address(hook));
         console.log("Fee Collector:      ", feeCollector);
         console.log("==============================================");
         console.log("\nNext steps:");
         console.log("1. Save these addresses to your .env file");
-        console.log("2. Run: make setup-demo");
+        console.log("2. Any wallet can now send - no allowlist needed");
         console.log("3. Mint test USDT: MockUSDT.mint(address, amount)");
     }
 }
@@ -342,9 +342,9 @@ contract DeployToUnichainSepolia is Script {
         mockUsdt.mint(deployer, 1_000_000 * 1e6);
         console.log("Minted 1,000,000 USDT to deployer");
 
-        // 2. Deploy AllowlistCompliance
-        AllowlistCompliance compliance = new AllowlistCompliance();
-        console.log("AllowlistCompliance:", address(compliance));
+        // 2. Deploy OpenCompliance (everyone can send immediately)
+        OpenCompliance compliance = new OpenCompliance();
+        console.log("OpenCompliance:", address(compliance));
 
         // 3. Deploy PhoneNumberResolver
         PhoneNumberResolver phoneResolver = new PhoneNumberResolver();
@@ -372,9 +372,8 @@ contract DeployToUnichainSepolia is Script {
         require(address(hook) == hookAddress, "Hook address mismatch");
         console.log("AstraSendHook:", address(hook));
 
-        // 5. Configure
+        // 5. Configure — just set the hook, no allowlist needed
         compliance.setHook(address(hook));
-        compliance.addToAllowlist(deployer, 0);
 
         // 6. Approve hook to spend deployer's USDT
         mockUsdt.approve(address(hook), type(uint256).max);
@@ -383,7 +382,7 @@ contract DeployToUnichainSepolia is Script {
 
         console.log("\n========== UNICHAIN SEPOLIA DEPLOYMENT ==========");
         console.log("MockUSDT:           ", address(mockUsdt));
-        console.log("AllowlistCompliance:", address(compliance));
+        console.log("OpenCompliance:     ", address(compliance));
         console.log("PhoneNumberResolver:", address(phoneResolver));
         console.log("AstraSendHook:      ", address(hook));
         console.log("Fee Collector:      ", feeCollector);

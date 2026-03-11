@@ -2,7 +2,7 @@
 pragma solidity ^0.8.26;
 
 /// @title RemitTypes
-/// @notice Shared types, structs, and events for the RemitSwap system
+/// @notice Shared types, structs, and events for the AstraSend system
 /// @author dev_jaytee
 library RemitTypes {
     /// @notice Status of a remittance

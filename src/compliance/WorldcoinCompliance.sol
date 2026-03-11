@@ -27,6 +27,9 @@ contract WorldcoinCompliance is ICompliance, Ownable {
     /// @notice The hook contract that can record usage
     address public hook;
 
+    /// @notice Addresses granted admin rights (blocklist/revocation operators)
+    mapping(address => bool) public admins;
+
     /// @notice Nullifier hashes already used (prevent double-verification)
     mapping(uint256 => bool) public nullifierHashes;
 
@@ -50,6 +53,8 @@ contract WorldcoinCompliance is ICompliance, Ownable {
 
     // ============ Events ============
 
+    event AdminAdded(address indexed admin);
+    event AdminRemoved(address indexed admin);
     event WorldIDVerified(address indexed account, uint256 nullifierHash);
     event AddedToBlocklist(address indexed account);
     event RemovedFromBlocklist(address indexed account);
@@ -84,6 +89,11 @@ contract WorldcoinCompliance is ICompliance, Ownable {
 
     modifier onlyHook() {
         if (msg.sender != hook) revert NotAuthorized();
+        _;
+    }
+
+    modifier onlyAdmin() {
+        if (msg.sender != owner() && !admins[msg.sender]) revert NotAuthorized();
         _;
     }
 
@@ -132,6 +142,19 @@ contract WorldcoinCompliance is ICompliance, Ownable {
 
     // ============ Admin Functions ============
 
+    /// @notice Grant admin rights to an address
+    function addAdmin(address admin) external onlyOwner {
+        if (admin == address(0)) revert InvalidAddress();
+        admins[admin] = true;
+        emit AdminAdded(admin);
+    }
+
+    /// @notice Revoke admin rights from an address
+    function removeAdmin(address admin) external onlyOwner {
+        admins[admin] = false;
+        emit AdminRemoved(admin);
+    }
+
     /// @notice Set the hook contract address
     /// @param _hook The hook contract address
     function setHook(address _hook) external onlyOwner {
@@ -142,7 +165,7 @@ contract WorldcoinCompliance is ICompliance, Ownable {
 
     /// @notice Add address to blocklist
     /// @param account The address to block
-    function addToBlocklist(address account) external onlyOwner {
+    function addToBlocklist(address account) external onlyAdmin {
         if (account == address(0)) revert InvalidAddress();
         if (blocklist[account]) revert AlreadyBlocked();
 
@@ -152,16 +175,16 @@ contract WorldcoinCompliance is ICompliance, Ownable {
 
     /// @notice Remove address from blocklist
     /// @param account The address to unblock
-    function removeFromBlocklist(address account) external onlyOwner {
+    function removeFromBlocklist(address account) external onlyAdmin {
         if (!blocklist[account]) revert NotBlocked();
 
         blocklist[account] = false;
         emit RemovedFromBlocklist(account);
     }
 
-    /// @notice Revoke verification for an address (admin action)
+    /// @notice Revoke verification for an address
     /// @param account The address to revoke
-    function revokeVerification(address account) external onlyOwner {
+    function revokeVerification(address account) external onlyAdmin {
         verified[account] = false;
         emit VerificationRevoked(account);
     }

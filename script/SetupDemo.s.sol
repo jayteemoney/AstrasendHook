@@ -4,7 +4,7 @@ pragma solidity ^0.8.26;
 import { Script, console } from "forge-std/Script.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { RemitSwapHook } from "../src/RemitSwapHook.sol";
+import { AstraSendHook } from "../src/AstraSendHook.sol";
 import { AllowlistCompliance } from "../src/compliance/AllowlistCompliance.sol";
 import { WorldcoinCompliance } from "../src/compliance/WorldcoinCompliance.sol";
 import { PhoneNumberResolver } from "../src/compliance/PhoneNumberResolver.sol";
@@ -26,7 +26,7 @@ contract SetupDemo is Script {
 
     // ============ Contract References ============
 
-    RemitSwapHook public hook;
+    AstraSendHook public hook;
     AllowlistCompliance public compliance;
     PhoneNumberResolver public phoneResolver;
 
@@ -37,7 +37,7 @@ contract SetupDemo is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
 
         // Load deployed contract addresses
-        hook = RemitSwapHook(vm.envAddress("HOOK_ADDRESS"));
+        hook = AstraSendHook(vm.envAddress("HOOK_ADDRESS"));
         compliance = AllowlistCompliance(vm.envAddress("COMPLIANCE_ADDRESS"));
         phoneResolver = PhoneNumberResolver(vm.envAddress("PHONE_RESOLVER_ADDRESS"));
 
@@ -110,7 +110,7 @@ contract SetupDemo is Script {
     // ============ Helper Functions ============
 
     function _createDemoWallet(string memory label) internal pure returns (address) {
-        return address(uint160(uint256(keccak256(abi.encodePacked("remitswap_demo_", label)))));
+        return address(uint160(uint256(keccak256(abi.encodePacked("astrasend_demo_", label)))));
     }
 
     function _computePhoneHash(string memory phone) internal pure returns (bytes32) {
@@ -139,14 +139,14 @@ contract SetupDemo is Script {
 /// @title SetupDemoRemittances
 /// @notice Creates sample remittances for demo purposes
 contract SetupDemoRemittances is Script {
-    RemitSwapHook public hook;
+    AstraSendHook public hook;
     AllowlistCompliance public compliance;
     PhoneNumberResolver public phoneResolver;
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
 
-        hook = RemitSwapHook(vm.envAddress("HOOK_ADDRESS"));
+        hook = AstraSendHook(vm.envAddress("HOOK_ADDRESS"));
         compliance = AllowlistCompliance(vm.envAddress("COMPLIANCE_ADDRESS"));
         phoneResolver = PhoneNumberResolver(vm.envAddress("PHONE_RESOLVER_ADDRESS"));
 
@@ -242,7 +242,7 @@ contract RegisterPhone is Script {
 contract CreateRemittance is Script {
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        RemitSwapHook hook = RemitSwapHook(vm.envAddress("HOOK_ADDRESS"));
+        AstraSendHook hook = AstraSendHook(vm.envAddress("HOOK_ADDRESS"));
 
         address recipient = vm.envAddress("RECIPIENT");
         uint256 targetAmount = vm.envUint("TARGET_AMOUNT");
@@ -273,7 +273,7 @@ contract CreateRemittance is Script {
 contract Contribute is Script {
     function run() external {
         uint256 contributorPrivateKey = vm.envUint("PRIVATE_KEY");
-        RemitSwapHook hook = RemitSwapHook(vm.envAddress("HOOK_ADDRESS"));
+        AstraSendHook hook = AstraSendHook(vm.envAddress("HOOK_ADDRESS"));
         address supportedToken = vm.envAddress("SUPPORTED_TOKEN");
 
         uint256 remittanceId = vm.envUint("REMITTANCE_ID");

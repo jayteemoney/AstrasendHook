@@ -2,7 +2,7 @@
 pragma solidity ^0.8.26;
 
 /// @title ICompliance
-/// @notice Interface for compliance modules in the RemitSwap system
+/// @notice Interface for compliance modules in the AstraSend system
 /// @author dev_jaytee
 interface ICompliance {
     /// @notice Check if a transfer is compliant
