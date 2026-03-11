@@ -7,7 +7,7 @@ import { RemitTypes } from "../src/libraries/RemitTypes.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /// @title InvariantTest
-/// @notice Invariant tests for RemitSwapHook
+/// @notice Invariant tests for AstraSendHook
 /// @dev Uses a handler contract to perform random operations and verify invariants hold
 contract InvariantTest is HookTest {
     RemitHandler public handler;

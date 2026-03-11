@@ -2,15 +2,15 @@
 pragma solidity ^0.8.26;
 
 import { Test } from "forge-std/Test.sol";
-import { RemitSwapHook } from "../../src/RemitSwapHook.sol";
+import { AstraSendHook } from "../../src/AstraSendHook.sol";
 import { RemitTypes } from "../../src/libraries/RemitTypes.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /// @title RemitHandler
-/// @notice Handler contract for invariant testing of RemitSwapHook
+/// @notice Handler contract for invariant testing of AstraSendHook
 /// @dev Performs random operations (create, contribute, release, cancel, claim) on the hook
 contract RemitHandler is Test {
-    RemitSwapHook public hook;
+    AstraSendHook public hook;
     IERC20 public usdt;
 
     address[] public actors;
@@ -24,7 +24,7 @@ contract RemitHandler is Test {
     uint256 public ghost_totalRefunded;
     uint256 public ghost_totalFees;
 
-    constructor(RemitSwapHook _hook, IERC20 _usdt, address[] memory _actors) {
+    constructor(AstraSendHook _hook, IERC20 _usdt, address[] memory _actors) {
         hook = _hook;
         usdt = _usdt;
         actors = _actors;

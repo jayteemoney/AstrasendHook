@@ -5,7 +5,7 @@ import { HookTest } from "./utils/HookTest.sol";
 import { RemitTypes } from "../src/libraries/RemitTypes.sol";
 
 /// @title IntegrationTest
-/// @notice Full flow integration tests for RemitSwapHook
+/// @notice Full flow integration tests for AstraSendHook
 contract IntegrationTest is HookTest {
     // ============ Full Remittance Flow Tests ============
 

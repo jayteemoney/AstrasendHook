@@ -35,7 +35,7 @@ contract WorldcoinComplianceTest is Test {
         charlie = makeAddr("charlie");
 
         mockWorldId = new MockWorldID();
-        compliance = new WorldcoinCompliance(IWorldID(address(mockWorldId)), "remitswap");
+        compliance = new WorldcoinCompliance(IWorldID(address(mockWorldId)), "astrasend");
         compliance.setHook(hookAddr);
     }
 
@@ -59,7 +59,7 @@ contract WorldcoinComplianceTest is Test {
 
     function test_Constructor_RevertIfZeroWorldId() public {
         vm.expectRevert(abi.encodeWithSignature("InvalidAddress()"));
-        new WorldcoinCompliance(IWorldID(address(0)), "remitswap");
+        new WorldcoinCompliance(IWorldID(address(0)), "astrasend");
     }
 
     // ============ Verification Tests ============

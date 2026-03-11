@@ -16,7 +16,7 @@ import { HookMiner } from "v4-periphery/src/utils/HookMiner.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { RemitSwapHook } from "../../src/RemitSwapHook.sol";
+import { AstraSendHook } from "../../src/AstraSendHook.sol";
 import { AllowlistCompliance } from "../../src/compliance/AllowlistCompliance.sol";
 import { PhoneNumberResolver } from "../../src/compliance/PhoneNumberResolver.sol";
 import { ICompliance } from "../../src/interfaces/ICompliance.sol";
@@ -46,7 +46,7 @@ contract MockERC20 is ERC20 {
 }
 
 /// @title HookTest
-/// @notice Base test contract for RemitSwapHook tests
+/// @notice Base test contract for AstraSendHook tests
 abstract contract HookTest is Test {
     using PoolIdLibrary for PoolKey;
     using CurrencyLibrary for Currency;
@@ -64,7 +64,7 @@ abstract contract HookTest is Test {
     // ============ Contracts ============
 
     IPoolManager internal poolManager;
-    RemitSwapHook internal hook;
+    AstraSendHook internal hook;
     AllowlistCompliance internal compliance;
     PhoneNumberResolver internal phoneResolver;
 
@@ -155,7 +155,7 @@ abstract contract HookTest is Test {
     // ============ Internal Helper Functions ============
 
     /// @notice Deploy the hook with the correct address encoding
-    function _deployHook() internal returns (RemitSwapHook) {
+    function _deployHook() internal returns (AstraSendHook) {
         // Calculate the flags we need
         uint160 flags = uint160(
             Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG | Hooks.AFTER_SWAP_RETURNS_DELTA_FLAG
@@ -168,10 +168,10 @@ abstract contract HookTest is Test {
 
         // Find a valid salt
         (address hookAddress, bytes32 salt) =
-            HookMiner.find(deployer, flags, type(RemitSwapHook).creationCode, constructorArgs);
+            HookMiner.find(deployer, flags, type(AstraSendHook).creationCode, constructorArgs);
 
         // Deploy the hook
-        RemitSwapHook newHook = new RemitSwapHook{ salt: salt }(
+        AstraSendHook newHook = new AstraSendHook{ salt: salt }(
             poolManager,
             ICompliance(address(compliance)),
             IPhoneNumberResolver(address(phoneResolver)),
