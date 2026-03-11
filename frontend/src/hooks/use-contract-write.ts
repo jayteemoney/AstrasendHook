@@ -5,11 +5,10 @@ import {
   useWaitForTransactionReceipt,
   useChainId,
   useReadContract,
-  useAccount,
 } from "wagmi";
 import {
   getContracts,
-  remitSwapHookAbi,
+  astraSendHookAbi,
   erc20Abi,
 } from "@/config/contracts";
 
@@ -27,14 +26,38 @@ export function useCreateRemittance() {
     autoRelease: boolean
   ) => {
     writeContract({
-      address: contracts.remitSwapHook,
-      abi: remitSwapHookAbi,
+      address: contracts.astraSendHook,
+      abi: astraSendHookAbi,
       functionName: "createRemittance",
       args: [recipient, targetAmount, expiresAt, purposeHash, autoRelease],
     });
   };
 
   return { create, hash, isPending, isConfirming, isSuccess, error, reset };
+}
+
+export function useCreateRemittanceByPhone() {
+  const { writeContract, data: hash, isPending, error, reset } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const chainId = useChainId();
+  const contracts = getContracts(chainId);
+
+  const createByPhone = (
+    recipientPhoneHash: `0x${string}`,
+    targetAmount: bigint,
+    expiresAt: bigint,
+    purposeHash: `0x${string}`,
+    autoRelease: boolean
+  ) => {
+    writeContract({
+      address: contracts.astraSendHook,
+      abi: astraSendHookAbi,
+      functionName: "createRemittanceByPhone",
+      args: [recipientPhoneHash, targetAmount, expiresAt, purposeHash, autoRelease],
+    });
+  };
+
+  return { createByPhone, hash, isPending, isConfirming, isSuccess, error, reset };
 }
 
 export function useContributeDirectly() {
@@ -45,8 +68,8 @@ export function useContributeDirectly() {
 
   const contribute = (remittanceId: bigint, amount: bigint) => {
     writeContract({
-      address: contracts.remitSwapHook,
-      abi: remitSwapHookAbi,
+      address: contracts.astraSendHook,
+      abi: astraSendHookAbi,
       functionName: "contributeDirectly",
       args: [remittanceId, amount],
     });
@@ -63,8 +86,8 @@ export function useReleaseRemittance() {
 
   const release = (remittanceId: bigint) => {
     writeContract({
-      address: contracts.remitSwapHook,
-      abi: remitSwapHookAbi,
+      address: contracts.astraSendHook,
+      abi: astraSendHookAbi,
       functionName: "releaseRemittance",
       args: [remittanceId],
     });
@@ -81,8 +104,8 @@ export function useCancelRemittance() {
 
   const cancel = (remittanceId: bigint) => {
     writeContract({
-      address: contracts.remitSwapHook,
-      abi: remitSwapHookAbi,
+      address: contracts.astraSendHook,
+      abi: astraSendHookAbi,
       functionName: "cancelRemittance",
       args: [remittanceId],
     });
@@ -99,8 +122,8 @@ export function useClaimExpiredRefund() {
 
   const claim = (remittanceId: bigint) => {
     writeContract({
-      address: contracts.remitSwapHook,
-      abi: remitSwapHookAbi,
+      address: contracts.astraSendHook,
+      abi: astraSendHookAbi,
       functionName: "claimExpiredRefund",
       args: [remittanceId],
     });
@@ -120,7 +143,7 @@ export function useApproveUSDT() {
       address: contracts.usdt,
       abi: erc20Abi,
       functionName: "approve",
-      args: [contracts.remitSwapHook, amount],
+      args: [contracts.astraSendHook, amount],
     });
   };
 
@@ -148,7 +171,7 @@ export function useUSDTAllowance(owner: `0x${string}` | undefined) {
     address: contracts.usdt,
     abi: erc20Abi,
     functionName: "allowance",
-    args: owner ? [owner, contracts.remitSwapHook] : undefined,
+    args: owner ? [owner, contracts.astraSendHook] : undefined,
     query: { enabled: !!owner },
   });
 }

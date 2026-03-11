@@ -1,13 +1,16 @@
 "use client";
 
+import { useCallback } from "react";
 import Link from "next/link";
 import { useAccount } from "wagmi";
+import { useQueryClient } from "@tanstack/react-query";
 import { Header } from "@/components/header";
 import { RemittanceCard } from "@/components/remittance-card";
 import { EmptyState } from "@/components/empty-state";
 import { useUserRemittances } from "@/hooks/use-user-remittances";
 import { useComplianceStatus } from "@/hooks/use-compliance";
 import { useUSDTBalance } from "@/hooks/use-contract-write";
+import { useRemittanceEvents } from "@/hooks/use-remittance-events";
 import { formatUSDTDisplay, RemittanceStatus } from "@/lib/utils";
 
 export default function DashboardPage() {
@@ -15,6 +18,14 @@ export default function DashboardPage() {
   const { remittances, isLoading } = useUserRemittances(address);
   const { data: complianceData } = useComplianceStatus(address);
   const { data: balance } = useUSDTBalance(address);
+  const queryClient = useQueryClient();
+
+  // Real-time event-driven updates — invalidate queries when events fire
+  const handleEvent = useCallback(
+    () => queryClient.invalidateQueries(),
+    [queryClient]
+  );
+  useRemittanceEvents({ onEvent: handleEvent, address });
 
   if (!isConnected) {
     return (
@@ -61,14 +72,14 @@ export default function DashboardPage() {
             </div>
             <div className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
               <p className="text-sm text-zinc-500 dark:text-zinc-500">
-                Compliance
+                Daily Limit Left
               </p>
-              <p className="mt-1 text-2xl font-semibold">
+              <p className="mt-1 text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
                 {complianceData ? (
                   complianceData[0] ? (
-                    <span className="text-emerald-600">Verified</span>
+                    `$${formatUSDTDisplay(complianceData[2] - complianceData[1])}`
                   ) : (
-                    <span className="text-red-500">Not Verified</span>
+                    <span className="text-red-500">Blocked</span>
                   )
                 ) : (
                   <span className="text-zinc-400">---</span>

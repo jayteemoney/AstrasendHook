@@ -2,7 +2,7 @@
 
 import { useReadContract } from "wagmi";
 import { useChainId } from "wagmi";
-import { getContracts, remitSwapHookAbi } from "@/config/contracts";
+import { getContracts, astraSendHookAbi } from "@/config/contracts";
 
 export interface RemittanceView {
   id: bigint;
@@ -25,8 +25,8 @@ export function useRemittance(remittanceId: bigint | undefined) {
   const contracts = getContracts(chainId);
 
   return useReadContract({
-    address: contracts.remitSwapHook,
-    abi: remitSwapHookAbi,
+    address: contracts.astraSendHook,
+    abi: astraSendHookAbi,
     functionName: "getRemittance",
     args: remittanceId !== undefined ? [remittanceId] : undefined,
     query: {
@@ -43,8 +43,8 @@ export function useContribution(
   const contracts = getContracts(chainId);
 
   return useReadContract({
-    address: contracts.remitSwapHook,
-    abi: remitSwapHookAbi,
+    address: contracts.astraSendHook,
+    abi: astraSendHookAbi,
     functionName: "getContribution",
     args:
       remittanceId !== undefined && contributor
@@ -62,8 +62,8 @@ export function usePlatformFee() {
   const contracts = getContracts(chainId);
 
   return useReadContract({
-    address: contracts.remitSwapHook,
-    abi: remitSwapHookAbi,
+    address: contracts.astraSendHook,
+    abi: astraSendHookAbi,
     functionName: "platformFeeBps",
   });
 }
@@ -73,8 +73,19 @@ export function useAutoReleaseEnabled() {
   const contracts = getContracts(chainId);
 
   return useReadContract({
-    address: contracts.remitSwapHook,
-    abi: remitSwapHookAbi,
+    address: contracts.astraSendHook,
+    abi: astraSendHookAbi,
     functionName: "autoReleaseEnabled",
+  });
+}
+
+export function useNextRemittanceId() {
+  const chainId = useChainId();
+  const contracts = getContracts(chainId);
+
+  return useReadContract({
+    address: contracts.astraSendHook,
+    abi: astraSendHookAbi,
+    functionName: "nextRemittanceId",
   });
 }

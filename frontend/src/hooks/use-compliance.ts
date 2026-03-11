@@ -41,3 +41,25 @@ export function useIsBlocked(address: `0x${string}` | undefined) {
     query: { enabled: !!address },
   });
 }
+
+export function useIsCompliant(
+  sender: `0x${string}` | undefined,
+  recipient: `0x${string}` | undefined,
+  amount: bigint | undefined
+) {
+  const chainId = useChainId();
+  const contracts = getContracts(chainId);
+
+  return useReadContract({
+    address: contracts.compliance,
+    abi: complianceAbi,
+    functionName: "isCompliant",
+    args:
+      sender && recipient && amount !== undefined
+        ? [sender, recipient, amount]
+        : undefined,
+    query: {
+      enabled: !!sender && !!recipient && amount !== undefined && amount > 0n,
+    },
+  });
+}

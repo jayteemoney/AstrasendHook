@@ -1,7 +1,7 @@
 "use client";
 
 import { useReadContract, useReadContracts, useChainId } from "wagmi";
-import { getContracts, remitSwapHookAbi } from "@/config/contracts";
+import { getContracts, astraSendHookAbi } from "@/config/contracts";
 import type { RemittanceView } from "./use-remittance";
 
 export function useCreatedRemittanceIds(address: `0x${string}` | undefined) {
@@ -9,8 +9,8 @@ export function useCreatedRemittanceIds(address: `0x${string}` | undefined) {
   const contracts = getContracts(chainId);
 
   return useReadContract({
-    address: contracts.remitSwapHook,
-    abi: remitSwapHookAbi,
+    address: contracts.astraSendHook,
+    abi: astraSendHookAbi,
     functionName: "getRemittancesByCreator",
     args: address ? [address] : undefined,
     query: { enabled: !!address },
@@ -22,8 +22,8 @@ export function useRecipientRemittanceIds(address: `0x${string}` | undefined) {
   const contracts = getContracts(chainId);
 
   return useReadContract({
-    address: contracts.remitSwapHook,
-    abi: remitSwapHookAbi,
+    address: contracts.astraSendHook,
+    abi: astraSendHookAbi,
     functionName: "getRemittancesForRecipient",
     args: address ? [address] : undefined,
     query: { enabled: !!address },
@@ -35,8 +35,8 @@ export function useRemittancesBatch(ids: readonly bigint[] | undefined) {
   const contracts = getContracts(chainId);
 
   const calls = (ids ?? []).map((id) => ({
-    address: contracts.remitSwapHook as `0x${string}`,
-    abi: remitSwapHookAbi,
+    address: contracts.astraSendHook as `0x${string}`,
+    abi: astraSendHookAbi,
     functionName: "getRemittance" as const,
     args: [id] as const,
   }));
