@@ -9,7 +9,12 @@ const stack = [
   {
     name: "Base L2",
     role: "Settlement Layer",
-    description: "Sub-cent gas fees with Ethereum-grade security. Instant finality.",
+    description: "Sub-cent gas fees with Ethereum-grade security. ~2s finality on Coinbase's flagship L2.",
+  },
+  {
+    name: "Unichain",
+    role: "MEV-Protected Settlement",
+    description: "200ms Flashblocks for near-instant settlement. TEE-secured block building ensures senders get the price they expect.",
   },
   {
     name: "USDT",
@@ -72,7 +77,7 @@ export function TechStack() {
             {[
               { label: "Sender", sub: "Wallet" },
               { label: "Uniswap v4", sub: "Pool + Hook" },
-              { label: "RemitSwapHook", sub: "Escrow" },
+              { label: "AstraSendHook", sub: "Escrow" },
               { label: "Compliance", sub: "KYC / World ID" },
               { label: "Recipient", sub: "Wallet" },
             ].map((node, i, arr) => (

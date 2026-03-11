@@ -1,8 +1,9 @@
 "use client";
 
-import { use } from "react";
+import { use, useCallback } from "react";
 import Link from "next/link";
-import { useAccount } from "wagmi";
+import { useAccount, useChainId } from "wagmi";
+import { useRemittanceEvents } from "@/hooks/use-remittance-events";
 import { Header } from "@/components/header";
 import { StatusBadge } from "@/components/status-badge";
 import { ContributeForm } from "@/components/contribute-form";
@@ -19,6 +20,8 @@ import {
   timeUntil,
   progressPercent,
   RemittanceStatus,
+  decodeContractError,
+  getExplorerTxUrl,
 } from "@/lib/utils";
 
 export default function RemittanceDetailPage({
@@ -37,8 +40,11 @@ export default function RemittanceDetailPage({
   } = useRemittance(remittanceId);
   const { data: myContribution } = useContribution(remittanceId, address);
 
+  const chainId = useChainId();
+
   const {
     release,
+    hash: releaseHash,
     isPending: isReleasing,
     isConfirming: isReleasingConfirm,
     isSuccess: releaseSuccess,
@@ -46,6 +52,7 @@ export default function RemittanceDetailPage({
   } = useReleaseRemittance();
   const {
     cancel,
+    hash: cancelHash,
     isPending: isCancelling,
     isConfirming: isCancellingConfirm,
     isSuccess: cancelSuccess,
@@ -53,11 +60,16 @@ export default function RemittanceDetailPage({
   } = useCancelRemittance();
   const {
     claim,
+    hash: claimHash,
     isPending: isClaiming,
     isConfirming: isClaimingConfirm,
     isSuccess: claimSuccess,
     error: claimError,
   } = useClaimExpiredRefund();
+
+  // Real-time event updates for this specific remittance
+  const handleEvent = useCallback(() => refetch(), [refetch]);
+  useRemittanceEvents({ onEvent: handleEvent, remittanceId });
 
   if (!isConnected) {
     return (
@@ -342,7 +354,12 @@ export default function RemittanceDetailPage({
                 </button>
                 {releaseSuccess && (
                   <p className="mt-2 text-xs text-emerald-600">
-                    Funds released successfully!
+                    Funds released successfully!{" "}
+                    {releaseHash && (
+                      <a href={getExplorerTxUrl(chainId, releaseHash)} target="_blank" rel="noopener noreferrer" className="underline">
+                        View transaction
+                      </a>
+                    )}
                   </p>
                 )}
               </div>
@@ -370,7 +387,12 @@ export default function RemittanceDetailPage({
                 </button>
                 {cancelSuccess && (
                   <p className="mt-2 text-xs text-red-600">
-                    Remittance cancelled. Contributors have been refunded.
+                    Remittance cancelled. Contributors have been refunded.{" "}
+                    {cancelHash && (
+                      <a href={getExplorerTxUrl(chainId, cancelHash)} target="_blank" rel="noopener noreferrer" className="underline">
+                        View transaction
+                      </a>
+                    )}
                   </p>
                 )}
               </div>
@@ -398,7 +420,12 @@ export default function RemittanceDetailPage({
                 </button>
                 {claimSuccess && (
                   <p className="mt-2 text-xs text-amber-600">
-                    Refund claimed successfully!
+                    Refund claimed successfully!{" "}
+                    {claimHash && (
+                      <a href={getExplorerTxUrl(chainId, claimHash)} target="_blank" rel="noopener noreferrer" className="underline">
+                        View transaction
+                      </a>
+                    )}
                   </p>
                 )}
               </div>
@@ -433,9 +460,7 @@ export default function RemittanceDetailPage({
             {/* Error display */}
             {actionError && (
               <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-900 dark:bg-red-900/20 dark:text-red-400">
-                {actionError.message.includes("User rejected")
-                  ? "Transaction was rejected"
-                  : actionError.message.slice(0, 200)}
+                {decodeContractError(actionError)}
               </div>
             )}
           </div>

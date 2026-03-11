@@ -31,7 +31,7 @@ export function Footer() {
                 R
               </div>
               <span className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                RemitSwap
+                AstraSend
               </span>
             </div>
             <p className="mt-3 text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
@@ -99,7 +99,7 @@ export function Footer() {
         {/* Bottom bar */}
         <div className="mt-12 flex flex-col items-center justify-between border-t border-zinc-100 pt-8 sm:flex-row dark:border-zinc-800">
           <p className="text-xs text-zinc-400">
-            &copy; {new Date().getFullYear()} RemitSwap. Built for UHI8 Uniswap
+            &copy; {new Date().getFullYear()} AstraSend. Built for UHI8 Uniswap
             Hook Incubator.
           </p>
           <p className="mt-2 text-xs text-zinc-400 sm:mt-0">

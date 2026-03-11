@@ -4,49 +4,49 @@ const rows = [
   {
     feature: "Total Fee",
     traditional: "6 – 15%",
-    remitswap: "< 1%",
+    astrasend: "< 1%",
     highlight: true,
   },
   {
     feature: "Settlement Time",
     traditional: "1 – 5 business days",
-    remitswap: "~2 seconds",
+    astrasend: "~2 seconds",
     highlight: true,
   },
   {
     feature: "Availability",
     traditional: "Business hours only",
-    remitswap: "24/7/365",
+    astrasend: "24/7/365",
     highlight: false,
   },
   {
     feature: "Minimum Send",
     traditional: "$50 – $100",
-    remitswap: "No minimum",
+    astrasend: "No minimum",
     highlight: false,
   },
   {
     feature: "Group Funding",
     traditional: "Not supported",
-    remitswap: "Built-in",
+    astrasend: "Built-in",
     highlight: true,
   },
   {
     feature: "Transparency",
     traditional: "Hidden fees, opaque FX",
-    remitswap: "Fully on-chain",
+    astrasend: "Fully on-chain",
     highlight: false,
   },
   {
     feature: "Compliance",
     traditional: "Manual KYC paperwork",
-    remitswap: "On-chain / World ID",
+    astrasend: "On-chain / World ID",
     highlight: false,
   },
   {
     feature: "Refund Policy",
     traditional: "Complex, days to process",
-    remitswap: "Instant, trustless",
+    astrasend: "Instant, trustless",
     highlight: false,
   },
 ];
@@ -58,10 +58,10 @@ export function Comparison() {
         {/* Section header */}
         <div className="mb-16 text-center">
           <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-            Why RemitSwap
+            Why AstraSend
           </p>
           <h2 className="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl dark:text-zinc-100">
-            Traditional remittance vs. RemitSwap
+            Traditional remittance vs. AstraSend
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-lg text-zinc-500 dark:text-zinc-400">
             The average global remittance fee is 6.2%. We bring it below 1%
@@ -80,7 +80,7 @@ export function Comparison() {
               Traditional
             </div>
             <div className="text-center text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-              RemitSwap
+              AstraSend
             </div>
           </div>
 
@@ -107,7 +107,7 @@ export function Comparison() {
                     : "text-zinc-900 dark:text-zinc-100"
                 }`}
               >
-                {row.remitswap}
+                {row.astrasend}
               </div>
             </div>
           ))}

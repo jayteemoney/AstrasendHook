@@ -4,9 +4,9 @@ import { useState } from "react";
 
 const faqs = [
   {
-    question: "What tokens does RemitSwap support?",
+    question: "What tokens does AstraSend support?",
     answer:
-      "Currently RemitSwap supports USDT (Tether) as the primary corridor token. This provides stability during transit, eliminating FX risk between send and receive.",
+      "Currently AstraSend supports USDT (Tether) as the primary corridor token. This provides stability during transit, eliminating FX risk between send and receive.",
   },
   {
     question: "How does group funding work?",
@@ -21,7 +21,7 @@ const faqs = [
   {
     question: "How is compliance handled?",
     answer:
-      "RemitSwap uses pluggable compliance modules. Phase 1 uses a KYC-based allowlist with configurable daily limits (default 10,000 USDT). Phase 2 adds Worldcoin World ID for biometric proof-of-personhood via zero-knowledge proofs.",
+      "AstraSend uses pluggable compliance modules. Phase 1 uses a KYC-based allowlist with configurable daily limits (default 10,000 USDT). Phase 2 adds Worldcoin World ID for biometric proof-of-personhood via zero-knowledge proofs.",
   },
   {
     question: "What are the fees?",
@@ -29,7 +29,7 @@ const faqs = [
       "The platform fee is 0.5% of the remittance amount, deducted at release. There are no hidden fees, no FX markups, and no wire transfer charges. Gas fees on Base L2 are typically under $0.01.",
   },
   {
-    question: "Is RemitSwap audited?",
+    question: "Is AstraSend audited?",
     answer:
       "The smart contracts include comprehensive test coverage with 182 passing tests (unit, integration, invariant, and fuzz tests). A formal audit is planned before mainnet deployment.",
   },

@@ -19,7 +19,7 @@ export function Hero() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
             </span>
-            Built on Uniswap v4 &middot; Live on Base
+            Built on Uniswap v4 &middot; Live on Base &amp; Unichain
           </div>
 
           {/* Main heading */}
@@ -34,7 +34,7 @@ export function Hero() {
           <p className="mt-6 max-w-2xl text-lg leading-relaxed text-zinc-600 sm:text-xl dark:text-zinc-400">
             Send money to anyone, anywhere, with fees under 1%. Powered by
             Uniswap v4 hooks for instant settlement, on-chain compliance, and
-            group contributions&mdash;all on Base.
+            group contributions&mdash;on Base &amp; Unichain.
           </p>
 
           {/* CTA buttons */}
@@ -67,7 +67,7 @@ export function Hero() {
           <div className="mt-20 grid grid-cols-2 gap-8 sm:grid-cols-4">
             {[
               { value: "< 1%", label: "Total fees" },
-              { value: "~2s", label: "Settlement" },
+              { value: "~200ms", label: "Settlement" },
               { value: "0.5%", label: "Platform fee" },
               { value: "24/7", label: "Availability" },
             ].map((stat) => (

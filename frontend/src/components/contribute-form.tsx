@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAccount } from "wagmi";
+import { useAccount, useChainId } from "wagmi";
 import {
   useContributeDirectly,
   useApproveUSDT,
   useUSDTAllowance,
   useUSDTBalance,
 } from "@/hooks/use-contract-write";
-import { parseUSDT, formatUSDT, formatUSDTDisplay } from "@/lib/utils";
+import { parseUSDT, formatUSDT, formatUSDTDisplay, decodeContractError, getExplorerTxUrl } from "@/lib/utils";
 
 interface ContributeFormProps {
   remittanceId: bigint;
@@ -24,6 +24,7 @@ export function ContributeForm({
   onSuccess,
 }: ContributeFormProps) {
   const { address } = useAccount();
+  const chainId = useChainId();
   const [amount, setAmount] = useState("");
 
   const { data: balance } = useUSDTBalance(address);
@@ -41,6 +42,7 @@ export function ContributeForm({
 
   const {
     contribute,
+    hash: contributeHash,
     isPending: isContributing,
     isConfirming: isContributingConfirm,
     isSuccess: contributeSuccess,
@@ -134,15 +136,23 @@ export function ContributeForm({
 
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-900 dark:bg-red-900/20 dark:text-red-400">
-          {error.message.includes("User rejected")
-            ? "Transaction was rejected"
-            : error.message.slice(0, 200)}
+          {decodeContractError(error)}
         </div>
       )}
 
       {contributeSuccess && (
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-700 dark:border-emerald-900 dark:bg-emerald-900/20 dark:text-emerald-400">
-          Contribution successful!
+          Contribution successful!{" "}
+          {contributeHash && (
+            <a
+              href={getExplorerTxUrl(chainId, contributeHash)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-emerald-800 dark:hover:text-emerald-300"
+            >
+              View transaction
+            </a>
+          )}
         </div>
       )}
 
