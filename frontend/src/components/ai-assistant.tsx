@@ -72,7 +72,7 @@ export function AIAssistant() {
                 <h3 className="text-sm font-semibold text-zinc-100">
                   AstraSend Assistant
                 </h3>
-                <p className="text-xs text-zinc-400">Powered by Claude</p>
+                <p className="text-xs text-zinc-400">Powered by AI</p>
               </div>
             </div>
             <div className="flex gap-1">
