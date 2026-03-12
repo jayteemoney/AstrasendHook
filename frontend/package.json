@@ -9,7 +9,6 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.78.0",
     "@tanstack/react-query": "^5.90.21",
     "connectkit": "^1.9.1",
     "next": "16.1.6",
