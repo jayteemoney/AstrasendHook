@@ -88,10 +88,9 @@ function FaqItem({
 
 export function FAQ() {
   return (
-    <section id="faq" className="py-24">
+    <section id="faq" className="py-16 sm:py-24">
       <div className="mx-auto max-w-3xl px-4">
-        {/* Section header */}
-        <div className="mb-12 text-center">
+        <div className="mb-10 text-center sm:mb-12">
           <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
             FAQ
           </p>

@@ -30,10 +30,9 @@ const stack = [
 
 export function TechStack() {
   return (
-    <section id="technology" className="py-24">
+    <section id="technology" className="py-16 sm:py-24">
       <div className="mx-auto max-w-6xl px-4">
-        {/* Section header */}
-        <div className="mb-16 text-center">
+        <div className="mb-10 text-center sm:mb-16">
           <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
             Technology
           </p>

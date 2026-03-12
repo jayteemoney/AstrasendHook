@@ -53,10 +53,9 @@ const steps = [
 
 export function HowItWorks() {
   return (
-    <section id="how-it-works" className="border-t border-zinc-100 bg-white py-24 dark:border-zinc-800/50 dark:bg-zinc-950">
+    <section id="how-it-works" className="border-t border-zinc-100 bg-white py-16 sm:py-24 dark:border-zinc-800/50 dark:bg-zinc-950">
       <div className="mx-auto max-w-6xl px-4">
-        {/* Section header */}
-        <div className="mb-16 text-center">
+        <div className="mb-10 text-center sm:mb-16">
           <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
             How it works
           </p>
