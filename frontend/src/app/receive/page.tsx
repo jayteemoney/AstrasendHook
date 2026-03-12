@@ -45,7 +45,7 @@ export default function ReceivePage() {
   return (
     <>
       <Header />
-      <main className="mx-auto max-w-lg px-4 py-8">
+      <main className="mx-auto max-w-lg px-4 py-6 sm:py-8">
         <div className="space-y-8">
           {/* Setup section */}
           <section>
