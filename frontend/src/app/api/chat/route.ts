@@ -1,4 +1,3 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest } from "next/server";
 
 const SYSTEM_PROMPT = `You are the AstraSend Assistant — a friendly, knowledgeable guide for AstraSend, a decentralized cross-border remittance protocol built on Uniswap v4.
@@ -10,7 +9,7 @@ Key facts you know:
 - Users can: create remittances, contribute to group remittances, release funds, cancel, and claim refunds from expired remittances
 - Payments are denominated in USDT (stablecoin) to eliminate FX risk
 - Compliance: Allowlist-based verification (Phase 1), World ID biometric verification (Phase 2)
-- Recipients can be specified by wallet address or phone number (via PhoneNumberResolver)
+- Recipients are specified by their wallet address (0x...)
 - Auto-release option: funds release automatically when the target amount is reached
 - Escrow-based: funds are held securely on-chain until released
 
@@ -32,7 +31,8 @@ Guidelines:
 - If asked about something outside AstraSend, politely redirect to remittance-related help.
 - Never share or ask for private keys, seed phrases, or sensitive information.`;
 
-const anthropic = new Anthropic();
+const HF_MODEL = "Qwen/Qwen2.5-72B-Instruct";
+const HF_API_URL = "https://router.huggingface.co/v1/chat/completions";
 
 export async function POST(req: NextRequest) {
   try {
@@ -45,7 +45,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Build context-aware system message
     let systemPrompt = SYSTEM_PROMPT;
     if (context) {
       const contextParts: string[] = [];
@@ -62,39 +61,79 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const response = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 512,
-      system: systemPrompt,
-      messages: messages.map(
-        (m: { role: string; content: string }) => ({
-          role: m.role as "user" | "assistant",
-          content: m.content,
-        })
-      ),
-      stream: true,
+    const hfMessages = [
+      { role: "system", content: systemPrompt },
+      ...messages.map((m: { role: string; content: string }) => ({
+        role: m.role,
+        content: m.content,
+      })),
+    ];
+
+    const response = await fetch(HF_API_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: HF_MODEL,
+        messages: hfMessages,
+        max_tokens: 512,
+        stream: true,
+      }),
     });
 
-    // Stream the response
+    if (!response.ok) {
+      const err = await response.text();
+      console.error("HF API error:", err);
+      return Response.json({ error: "Inference failed" }, { status: 502 });
+    }
+
     const encoder = new TextEncoder();
-    const stream = new ReadableStream({
+    const readable = new ReadableStream({
       async start(controller) {
-        for await (const event of response) {
-          if (
-            event.type === "content_block_delta" &&
-            event.delta.type === "text_delta"
-          ) {
-            controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify({ text: event.delta.text })}\n\n`)
-            );
+        const reader = response.body!.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() ?? "";
+
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed.startsWith("data:")) continue;
+              const data = trimmed.slice(5).trim();
+              if (data === "[DONE]") {
+                controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+                return;
+              }
+              try {
+                const parsed = JSON.parse(data);
+                const text = parsed.choices?.[0]?.delta?.content;
+                if (text) {
+                  controller.enqueue(
+                    encoder.encode(`data: ${JSON.stringify({ text })}\n\n`)
+                  );
+                }
+              } catch {
+                // ignore
+              }
+            }
           }
+        } finally {
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+          controller.close();
         }
-        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-        controller.close();
       },
     });
 
-    return new Response(stream, {
+    return new Response(readable, {
       headers: {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
