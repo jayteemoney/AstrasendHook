@@ -16,7 +16,7 @@ const steps = [
     step: "02",
     title: "Fund Individually or as a Group",
     description:
-      "Contribute USDT directly or through Uniswap v4 swaps. Multiple people can pool funds toward a single remittance for collective support.",
+      "Contribute USDT directly or via Uniswap v4 swaps—the hook captures a portion of each swap output automatically. Multiple people can pool funds toward a single remittance.",
     icon: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />

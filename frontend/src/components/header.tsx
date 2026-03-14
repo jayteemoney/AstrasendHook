@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ConnectKitButton } from "connectkit";
 import { useAccount } from "wagmi";
+import { LogoMark } from "@/components/logo";
 
 const navLinks = [
   {
@@ -53,9 +54,7 @@ export function Header() {
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-sm font-bold text-white">
-              A
-            </div>
+            <LogoMark size={32} />
             <span className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
               AstraSend
             </span>

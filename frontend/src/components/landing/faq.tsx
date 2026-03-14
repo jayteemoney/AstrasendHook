@@ -31,7 +31,7 @@ const faqs = [
   {
     question: "Is AstraSend audited?",
     answer:
-      "The smart contracts include comprehensive test coverage with 182 passing tests (unit, integration, invariant, and fuzz tests). A formal audit is planned before mainnet deployment.",
+      "The smart contracts include comprehensive test coverage with 229 passing tests (unit, integration, invariant, and fuzz tests). A formal audit is planned before mainnet deployment.",
   },
 ];
 

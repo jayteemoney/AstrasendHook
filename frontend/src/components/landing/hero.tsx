@@ -18,9 +18,10 @@ export function Hero() {
           </h1>
 
           <p className="mt-6 max-w-2xl text-base leading-relaxed text-zinc-600 sm:text-xl dark:text-zinc-400">
-            Send money to anyone, anywhere, with fees under 1%. Powered by
-            Uniswap v4 hooks for instant settlement, on-chain compliance, and
-            group contributions&mdash;on Base &amp; Unichain.
+            Send USDT to anyone via wallet address or phone number, with fees
+            under 1%. Powered by Uniswap v4 hooks for trustless escrow,
+            on-chain compliance, and group contributions&mdash;on Base &amp;
+            Unichain.
           </p>
 
           <div className="mt-10">
@@ -50,7 +51,7 @@ export function Hero() {
           <div className="mt-16 grid grid-cols-2 gap-6 sm:mt-20 sm:grid-cols-4 sm:gap-10">
             {[
               { value: "< 1%", label: "Total fees" },
-              { value: "~200ms", label: "Settlement" },
+              { value: "~2s", label: "Base settlement" },
               { value: "0.5%", label: "Platform fee" },
               { value: "24/7", label: "Availability" },
             ].map((stat) => (

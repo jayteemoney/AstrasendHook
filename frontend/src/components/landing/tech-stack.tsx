@@ -4,7 +4,7 @@ const stack = [
   {
     name: "Uniswap v4",
     role: "Hook Architecture",
-    description: "beforeSwap compliance checks and afterSwap contribution recording via custom hooks.",
+    description: "beforeSwap/beforeAddLiquidity compliance gates and afterSwap contribution capture. The hook intercepts swaps to fund remittance escrows and enforces daily limits.",
   },
   {
     name: "Base L2",
