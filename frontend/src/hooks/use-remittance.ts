@@ -1,7 +1,6 @@
 "use client";
 
-import { useReadContract } from "wagmi";
-import { useChainId } from "wagmi";
+import { useReadContract, useChainId } from "wagmi";
 import { getContracts, astraSendHookAbi } from "@/config/contracts";
 
 export interface RemittanceView {
@@ -65,17 +64,6 @@ export function usePlatformFee() {
     address: contracts.astraSendHook,
     abi: astraSendHookAbi,
     functionName: "platformFeeBps",
-  });
-}
-
-export function useAutoReleaseEnabled() {
-  const chainId = useChainId();
-  const contracts = getContracts(chainId);
-
-  return useReadContract({
-    address: contracts.astraSendHook,
-    abi: astraSendHookAbi,
-    functionName: "autoReleaseEnabled",
   });
 }
 

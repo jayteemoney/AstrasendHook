@@ -58,10 +58,6 @@ contract AstraSendHook is BaseHook, IAstraSendHook, Ownable, ReentrancyGuardTran
     /// @notice Maximum contributors per remittance to prevent gas bomb on cancel
     uint256 public constant MAX_CONTRIBUTORS = 50;
 
-    /// @notice Transient storage slot for passing hookData between beforeSwap and afterSwap
-    /// @dev keccak256("AstraSendHook.hookData") = 0x...
-    uint256 private constant _HOOK_DATA_SLOT = 0x01;
-
     // ============ State Variables ============
 
     /// @notice Compliance module contract
@@ -203,7 +199,9 @@ contract AstraSendHook is BaseHook, IAstraSendHook, Ownable, ReentrancyGuardTran
 
         // Only gate registered corridor pools; allow unregistered pools freely
         if (registeredPools[pid]) {
-            bool allowed = compliance.isCompliant(sender, sender, 0);
+            // Use getComplianceStatus to check allowlist/blocklist without amount thresholds,
+            // since LP provision has no transfer amount to validate
+            (bool allowed,,) = compliance.getComplianceStatus(sender);
 
             emit RemitTypes.ComplianceGatedLP(sender, pid, allowed);
 
@@ -251,12 +249,6 @@ contract AstraSendHook is BaseHook, IAstraSendHook, Ownable, ReentrancyGuardTran
         // Prevent recipient from contributing (anti-fraud)
         if (sender == remit.recipient) revert RecipientCannotContribute();
 
-        // Cache remittanceId in transient storage for afterSwap (saves re-decoding hookData)
-        uint256 rid = data.remittanceId;
-        assembly {
-            tstore(0x01, rid)
-        }
-
         return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
     }
 
@@ -284,23 +276,33 @@ contract AstraSendHook is BaseHook, IAstraSendHook, Ownable, ReentrancyGuardTran
 
         RemittanceStorage storage remit = remittances[data.remittanceId];
 
-        // Calculate contribution amount from delta
+        // BalanceDelta in afterSwap is from the swapper's perspective:
+        //   positive = swapper received that currency (USDT flowing TO swapper = the contribution amount)
+        //   negative = swapper sent that currency
         int128 amount0 = delta.amount0();
         int128 amount1 = delta.amount1();
 
         uint256 contributionAmount;
+        Currency usdtCurrency;
         if (Currency.unwrap(key.currency0) == remit.token) {
-            contributionAmount = amount0 < 0 ? uint256(uint128(-amount0)) : 0;
+            contributionAmount = amount0 > 0 ? uint256(uint128(amount0)) : 0;
+            usdtCurrency = key.currency0;
         } else if (Currency.unwrap(key.currency1) == remit.token) {
-            contributionAmount = amount1 < 0 ? uint256(uint128(-amount1)) : 0;
+            contributionAmount = amount1 > 0 ? uint256(uint128(amount1)) : 0;
+            usdtCurrency = key.currency1;
         }
 
         if (contributionAmount == 0) revert NoContribution();
 
+        // Physically pull USDT from PoolManager into this hook's custody (escrow)
+        // This intercepts the swap output before it reaches the swapper
+        poolManager.take(usdtCurrency, address(this), contributionAmount);
+
         // Record the contribution (shared logic with contributeDirectly)
         _recordContribution(data.remittanceId, remit, sender, contributionAmount);
 
-        return (this.afterSwap.selector, 0);
+        // Return positive hookDeltaUnspecified so PoolManager reduces swapper's USDT output by this amount
+        return (this.afterSwap.selector, int128(uint128(contributionAmount)));
     }
 
     /// @notice Called before donations — routes pool donations to active remittance recipients
