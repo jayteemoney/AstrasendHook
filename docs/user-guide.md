@@ -1,6 +1,6 @@
 # AstraSend User Guide
 
-AI-assisted, MEV-protected cross-border remittances powered by Uniswap v4 hooks.
+Low-cost, compliant, group-funded cross-border remittances powered by Uniswap v4 hooks.
 
 ---
 
@@ -10,17 +10,18 @@ AI-assisted, MEV-protected cross-border remittances powered by Uniswap v4 hooks.
 2. [Dashboard Overview](#2-dashboard-overview)
 3. [Sending Money](#3-sending-money)
 4. [Receiving Money](#4-receiving-money)
-5. [Contributing to a Remittance](#5-contributing-to-a-remittance)
-6. [Releasing Funds](#6-releasing-funds)
-7. [Cancelling a Remittance](#7-cancelling-a-remittance)
-8. [Claiming an Expired Refund](#8-claiming-an-expired-refund)
-9. [Transaction History](#9-transaction-history)
-10. [AI Assistant](#10-ai-assistant)
-11. [Supported Chains](#11-supported-chains)
-12. [Compliance & Verification](#12-compliance--verification)
-13. [Fees & Limits](#13-fees--limits)
-14. [Remittance Statuses](#14-remittance-statuses)
-15. [Troubleshooting](#15-troubleshooting)
+5. [Registering Your Phone Number](#5-registering-your-phone-number)
+6. [Contributing to a Remittance](#6-contributing-to-a-remittance)
+7. [Releasing Funds](#7-releasing-funds)
+8. [Cancelling a Remittance](#8-cancelling-a-remittance)
+9. [Claiming an Expired Refund](#9-claiming-an-expired-refund)
+10. [Transaction History](#10-transaction-history)
+11. [AI Assistant](#11-ai-assistant)
+12. [Supported Chains](#12-supported-chains)
+13. [Compliance & Verification](#13-compliance--verification)
+14. [Fees & Limits](#14-fees--limits)
+15. [Remittance Statuses](#15-remittance-statuses)
+16. [Troubleshooting](#16-troubleshooting)
 
 ---
 
@@ -36,7 +37,7 @@ AI-assisted, MEV-protected cross-border remittances powered by Uniswap v4 hooks.
 
 1. Open the AstraSend app in your browser.
 2. You will land on the **home page** showing an overview of the protocol, features, comparison with traditional remittances, technology stack, and FAQ.
-3. Click **Connect Wallet** (in the top-right header or in the hero section).
+3. Click **Connect Wallet** (in the top-right header).
 4. Choose your wallet provider and approve the connection.
 5. Once connected, the **navigation menu** appears in the header: **Dashboard**, **Send**, **Receive**, **History**.
 6. You are automatically taken to the Dashboard.
@@ -51,15 +52,16 @@ The Dashboard is your home base. It shows three stat cards at the top:
 |------|--------------|
 | **USDT Balance** | Your current USDT balance on the connected chain |
 | **Active Remittances** | Number of remittances currently in progress |
-| **Compliance** | Your verification status (Verified / Not Verified) |
+| **Daily Limit** | Your remaining USDT send limit for today |
 
 Below the stats you will find:
 
-- **Quick Actions** --- two buttons: **Send Money** and **Receive**.
-- **Active Remittances** --- a list of all your in-progress remittances (ones you created or are a recipient of). Click any card to view its full details.
-- **Recent Activity** --- the last 3 completed remittances with a **View All** link to the full history.
+- **Quick Actions** — two buttons: **Send Money** and **Receive**.
+- **Register phone** nudge (amber) — appears if you have not yet registered a phone number. Click to go to the Receive page and register.
+- **Active Remittances** — a list of all your in-progress remittances (ones you created or are a recipient of). Click any card to view its full details.
+- **Recent Activity** — the last 3 completed remittances with a **View All** link to the full history.
 
-The Dashboard updates in **real time** --- when someone contributes to your remittance or a status changes on-chain, the data refreshes automatically via event listeners.
+The Dashboard updates in **real time** — when someone contributes to your remittance or a status changes on-chain, the data refreshes automatically via event listeners.
 
 ---
 
@@ -72,23 +74,25 @@ The Dashboard updates in **real time** --- when someone contributes to your remi
 
 #### Fill in the Form
 
-3. **Compliance Status** is displayed at the top of the form. You must be **Verified** to send. Your remaining daily limit is shown.
+3. **Compliance Status** is displayed at the top of the form. Your remaining daily limit is shown.
 
-4. **Recipient** --- enter the recipient's wallet address (0x...). The form validates the address and shows an error if it is malformed.
+4. **Recipient** — enter the recipient's wallet address (`0x...`) **or** their phone number (`+countrycode...`).
+   - Address mode: enter a `0x...` Ethereum address.
+   - Phone mode: enter a phone number in E.164 format (e.g., `+2348012345678`). The form resolves it to the registered wallet and shows a preview.
 
-5. **Amount (USDT)** --- enter the amount to send. The fee breakdown updates live:
+5. **Amount (USDT)** — enter the amount to send. The fee breakdown updates live:
    - Platform Fee (read from the contract, currently 0.5%)
    - Net amount the recipient will receive
 
-6. **Expiry (days, optional)** --- set a deadline. If the target is not met by this date, contributors can claim full refunds. Leave empty for no expiry.
+6. **Expiry (days, optional)** — set a deadline. If the target is not met by this date, contributors can claim full refunds. Leave empty for no expiry.
 
-7. **Purpose (optional)** --- describe what the remittance is for (e.g., "School fees", "Medical expenses"). This is hashed on-chain for privacy.
+7. **Purpose (optional)** — describe what the remittance is for (e.g., "School fees", "Medical expenses"). This is hashed on-chain for privacy.
 
-8. **Auto-release** --- enabled by default. When toggled on, funds are automatically released to the recipient as soon as the target amount is reached. When off, the recipient must manually release.
+8. **Auto-release** — enabled by default. When toggled on, funds are automatically released to the recipient as soon as the target amount is reached. When off, the recipient must manually release.
 
 #### Pre-Send Compliance Check
 
-9. If you are sending to a wallet address, AstraSend runs a **live compliance check** against the contract before you submit. If the check fails (e.g., recipient not on allowlist, daily limit exceeded), an **amber warning** appears and the submit button is disabled. This saves you gas by preventing a transaction that would revert.
+9. AstraSend runs a **live compliance check** against the contract before you submit. If the check fails (e.g., recipient is blocked, daily limit exceeded), an amber warning appears and the submit button is disabled. This saves you gas by preventing a transaction that would revert.
 
 #### Submit
 
@@ -103,17 +107,40 @@ The Dashboard updates in **real time** --- when someone contributes to your remi
 ## 4. Receiving Money
 
 1. Navigate to **Receive** (from the header or Dashboard).
-2. At the top of the page your **wallet address** is displayed with a one-click **Copy** button. Share this address with anyone who wants to send you money.
-3. Below the address, all remittances where **you are the recipient** are listed, split into:
-   - **Pending** --- active remittances waiting for funding or your release.
-   - **Completed** --- released or cancelled remittances.
-4. Click any remittance card to open its **detail page** where you can release funds once the target is met.
+2. At the top of the page you can **register your phone number** (see section 5 below).
+3. Your **wallet address** is displayed with a one-click **Copy** button. Share this address or your registered phone number with anyone who wants to send you money.
+4. Below the address, all remittances where **you are the recipient** are listed, split into:
+   - **Pending** — active remittances waiting for funding or your release.
+   - **Completed** — released or cancelled remittances.
+5. Click any remittance card to open its **detail page** where you can release funds once the target is met.
 
 ---
 
-## 5. Contributing to a Remittance
+## 5. Registering Your Phone Number
 
-AstraSend supports **group contributions** --- multiple people can pool funds toward a single remittance (e.g., family members contributing to tuition).
+Registering lets senders send money to your phone number instead of your wallet address. The phone number is stored as a privacy-preserving hash — it cannot be read back from the contract.
+
+### How to Register
+
+1. Navigate to **Receive**.
+2. In the **Phone Registration** section at the top, enter your phone number in E.164 format:
+   - Format: `+[country code][number]` (no spaces, dashes, or brackets)
+   - Example: `+2348012345678` (Nigeria), `+14155552671` (USA)
+3. Click **Register Phone Number**.
+4. Confirm the transaction in your wallet.
+5. Once confirmed, senders can now send to your phone number directly.
+
+### Notes
+
+- You must call this from the wallet you want to link. The contract enforces this — you cannot register a phone for someone else's wallet.
+- To update your registered wallet: use the **Update Wallet** option (calls `updateMyWallet(newAddress)`).
+- To unregister: use the **Unregister** option (calls `unregisterMyPhone()`).
+
+---
+
+## 6. Contributing to a Remittance
+
+AstraSend supports **group contributions** — multiple people can pool funds toward a single remittance (e.g., family members contributing to tuition).
 
 ### Step-by-Step
 
@@ -139,7 +166,7 @@ AstraSend supports **group contributions** --- multiple people can pool funds to
 
 ---
 
-## 6. Releasing Funds
+## 7. Releasing Funds
 
 When a remittance reaches its **target amount**, the funds can be released to the recipient.
 
@@ -162,7 +189,7 @@ If auto-release is disabled, the **recipient** must manually release:
 
 ---
 
-## 7. Cancelling a Remittance
+## 8. Cancelling a Remittance
 
 Only the **creator** of a remittance can cancel it, and only while it is still **Active**.
 
@@ -175,7 +202,7 @@ Only the **creator** of a remittance can cancel it, and only while it is still *
 
 ---
 
-## 8. Claiming an Expired Refund
+## 9. Claiming an Expired Refund
 
 If a remittance has an **expiry date** and the target was not met in time:
 
@@ -190,21 +217,21 @@ If a remittance has an **expiry date** and the target was not met in time:
 
 ---
 
-## 9. Transaction History
+## 10. Transaction History
 
 1. Navigate to **History** from the header.
 2. View all your remittances (sent and received) in one list, sorted by most recent.
 3. **Filter** by status using the tabs at the top:
-   - **All** --- every remittance
-   - **Active** --- currently in progress
-   - **Released** --- successfully completed
-   - **Cancelled** --- cancelled by creator
-   - **Expired** --- past their deadline
+   - **All** — every remittance
+   - **Active** — currently in progress
+   - **Released** — successfully completed
+   - **Cancelled** — cancelled by creator
+   - **Expired** — past their deadline
 4. Click any card to view the full remittance detail page.
 
 ---
 
-## 10. AI Assistant
+## 11. AI Assistant
 
 AstraSend includes a **Claude-powered AI assistant** that helps you navigate the app.
 
@@ -226,29 +253,29 @@ AstraSend includes a **Claude-powered AI assistant** that helps you navigate the
 
 ### Features
 
-- **Context-aware** --- the assistant knows which chain you are connected to, whether your wallet is connected, and which page you are on.
-- **Non-technical language** --- designed for remittance users who may not know crypto jargon.
+- **Context-aware** — the assistant knows which chain you are connected to, whether your wallet is connected, and which page you are on.
+- **Non-technical language** — designed for remittance users who may not know crypto jargon.
 - **Clear chat** button (trash icon) to start a fresh conversation.
-- **Collapsible** --- click the X to close without losing your conversation.
+- **Collapsible** — click the X to close without losing your conversation.
 
 ---
 
-## 11. Supported Chains
+## 12. Supported Chains
 
-AstraSend is deployed on two chains:
+AstraSend is deployed on two testnets, with mainnet deployments ready:
 
 | Chain | Settlement Speed | Key Advantage | Chain ID |
 |-------|-----------------|---------------|----------|
+| **Base Sepolia** | ~2 seconds | Testnet — use this to try AstraSend | 84532 |
+| **Unichain Sepolia** | ~200ms | Testnet — fastest settlement via Flashblocks | 1301 |
 | **Base** | ~2 seconds | Coinbase's L2, broad ecosystem, sub-cent gas | 8453 |
-| **Base Sepolia** | ~2 seconds | Testnet for testing with mock USDT | 84532 |
-| **Unichain** | ~200ms | Uniswap's L2, Flashblocks, MEV-protected | 130 |
-| **Unichain Sepolia** | ~200ms | Testnet for testing | 1301 |
+| **Unichain** | ~200ms | Uniswap's L2, MEV-protected Flashblocks | 130 |
 
 ### Why Unichain?
 
-- **200ms Flashblocks** --- near-instant settlement, so the recipient sees funds almost immediately.
-- **TEE-secured block building** --- Trusted Execution Environment prevents MEV attacks (front-running, sandwich attacks). This means senders always get the price they expect when swapping into USDT.
-- **Uniswap-aligned** --- purpose-built for DeFi, with native Uniswap v4 integration.
+- **200ms Flashblocks** — near-instant settlement, so the recipient sees funds almost immediately.
+- **TEE-secured block building** — Trusted Execution Environment prevents MEV attacks (front-running, sandwich attacks). Senders always get the price they expect when swapping into USDT.
+- **Uniswap-aligned** — purpose-built for DeFi, with native Uniswap v4 integration.
 
 ### Switching Chains
 
@@ -256,21 +283,26 @@ Use your wallet's chain switcher to move between supported chains. The app detec
 
 ---
 
-## 12. Compliance & Verification
+## 13. Compliance & Verification
 
-AstraSend uses **on-chain compliance** to meet regulatory requirements.
+AstraSend uses **on-chain compliance** to meet regulatory requirements. The compliance module is pluggable and upgrades without redeploying the hook.
 
-### Phase 1: Allowlist (Current)
+### Testnet: OpenCompliance (Current)
 
-- Users must be added to the **allowlist** by the protocol admin before transacting.
-- Each user has a **daily transaction limit** (default: 10,000 USDT).
+- **Permissionless** — all wallets can transact by default on testnet.
+- Each wallet has a **daily transaction limit** (default: 10,000 USDT).
+- Admins can blocklist specific addresses for fraud prevention.
 - Your compliance status and remaining daily limit are shown on the Dashboard and Send page.
-- If you are not verified, the Send form will indicate **"Not Verified"** and the pre-send compliance check will block submission.
 
-### Phase 2: World ID (Coming Soon)
+### Phase 1 Mainnet: AllowlistCompliance
+
+- Users must be added to the **allowlist** by the protocol admin (after KYC verification).
+- Each user has a configurable daily limit.
+
+### Phase 2 Mainnet: World ID
 
 - Biometric proof-of-personhood via Worldcoin's zero-knowledge proofs.
-- No personal data stored on-chain --- only proof that you are a unique human.
+- No personal data stored on-chain — only proof that you are a unique human.
 - Sybil-resistant: prevents one person from creating multiple accounts.
 
 ### What Happens If Compliance Fails
@@ -278,19 +310,19 @@ AstraSend uses **on-chain compliance** to meet regulatory requirements.
 - The Send form runs a **live compliance check** as you fill it out.
 - If the check fails, an amber warning appears: *"Compliance check failed for this transfer."*
 - The submit button is disabled, saving you gas from a transaction that would revert.
-- Common reasons: sender or recipient not on allowlist, daily limit exceeded, account blocked.
+- Common reasons: recipient is blocked, daily limit exceeded.
 
 ---
 
-## 13. Fees & Limits
+## 14. Fees & Limits
 
 | Item | Value |
 |------|-------|
 | **Platform Fee** | 0.5% (50 basis points), charged at release time |
 | **Gas Fees** | Typically < $0.01 on Base / Unichain |
 | **Total Cost** | Under 1% all-in |
-| **Minimum Send** | No protocol minimum (compliance module may enforce a $1 minimum) |
-| **Daily Limit** | Default 10,000 USDT per day (configurable per user) |
+| **Minimum Send** | No protocol minimum |
+| **Daily Limit** | Default 10,000 USDT per day |
 
 ### How Fees Work
 
@@ -301,7 +333,7 @@ AstraSend uses **on-chain compliance** to meet regulatory requirements.
 
 ---
 
-## 14. Remittance Statuses
+## 15. Remittance Statuses
 
 | Status | Color | Meaning |
 |--------|-------|---------|
@@ -322,15 +354,13 @@ Once a remittance is Released, Cancelled, or Expired, it cannot change status ag
 
 ---
 
-## 15. Troubleshooting
+## 16. Troubleshooting
 
 ### Common Error Messages
 
-These are the human-readable error messages decoded from on-chain contract reverts:
-
 | Error | Meaning | What to Do |
 |-------|---------|------------|
-| **Compliance check failed** | Sender or recipient not verified, or daily limit exceeded | Ensure both parties are on the allowlist and within limits |
+| **Compliance check failed** | Recipient is blocked or daily limit exceeded | Check remaining daily limit; contact support if blocked unexpectedly |
 | **Invalid recipient address** | The address is malformed | Double-check the 0x... address |
 | **You cannot send to yourself** | Sender and recipient are the same | Use a different recipient address |
 | **Amount is invalid or below the minimum** | Amount too low or zero | Enter a valid amount above the minimum |
@@ -349,7 +379,7 @@ These are the human-readable error messages decoded from on-chain contract rever
 
 - Make sure your wallet extension is installed and unlocked.
 - Try refreshing the page.
-- Switch to a supported chain (Base, Base Sepolia, Unichain, or Unichain Sepolia).
+- Switch to a supported chain (Base Sepolia or Unichain Sepolia for testnet).
 
 ### Transaction Stuck?
 
@@ -362,6 +392,12 @@ These are the human-readable error messages decoded from on-chain contract rever
 - Ensure you are on the correct chain. Remittances on Base are separate from Unichain.
 - The Dashboard auto-refreshes every 10 seconds and also listens for real-time events.
 - Try refreshing the page.
+
+### Phone Number Not Resolving?
+
+- Ensure the phone is in E.164 format: `+[country code][number]` with no spaces or dashes.
+- The recipient must have registered their phone number via the **Receive** page first.
+- Phone registration is on-chain — it requires a transaction from the recipient's wallet.
 
 ### Need More Help?
 
