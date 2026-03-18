@@ -154,6 +154,88 @@ export default function DashboardPage() {
               </div>
             </section>
           )}
+
+          {/* Compliance Roadmap */}
+          <section>
+            <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+              Compliance Roadmap
+            </h2>
+            <div className="relative space-y-0">
+              {/* Connector line */}
+              <div className="absolute left-4 top-5 h-[calc(100%-40px)] w-px bg-zinc-200 dark:bg-zinc-700" />
+
+              {[
+                {
+                  phase: "Now",
+                  label: "OpenCompliance (Testnet)",
+                  status: "active",
+                  desc: "Permissionless — all wallets can transact. Blocklist for fraud prevention. 10,000 USDT daily limit per wallet.",
+                  badge: "Live on testnet",
+                  badgeColor: "emerald",
+                },
+                {
+                  phase: "Phase 1",
+                  label: "AllowlistCompliance",
+                  status: "ready",
+                  desc: "KYC-gated allowlist. Admin approves wallets after identity verification. Per-user configurable daily limits. Contract deployed and audited.",
+                  badge: "Ready to deploy",
+                  badgeColor: "blue",
+                },
+                {
+                  phase: "Phase 2",
+                  label: "WorldcoinCompliance",
+                  status: "built",
+                  desc: "Biometric proof-of-personhood via World ID. Zero-knowledge iris scan — no personal data on-chain. Sybil-resistant: one account per human. Hot-swappable with no hook redeployment.",
+                  badge: "Built",
+                  badgeColor: "violet",
+                },
+              ].map(({ phase, label, status, desc, badge, badgeColor }) => (
+                <div key={phase} className="relative flex gap-4 pb-6 last:pb-0">
+                  <div className="relative z-10 mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-white bg-white dark:border-zinc-900 dark:bg-zinc-900">
+                    <div
+                      className={`h-3 w-3 rounded-full ${
+                        status === "active"
+                          ? "bg-emerald-500"
+                          : status === "ready"
+                            ? "bg-blue-500"
+                            : "bg-violet-500"
+                      }`}
+                    />
+                  </div>
+                  <div className="flex-1 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                    <div className="mb-1 flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-semibold text-zinc-400 dark:text-zinc-500">
+                        {phase}
+                      </span>
+                      <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                        {label}
+                      </span>
+                      <span
+                        className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                          badgeColor === "emerald"
+                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                            : badgeColor === "blue"
+                              ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                              : "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400"
+                        }`}
+                      >
+                        {badge}
+                      </span>
+                    </div>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                      {desc}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="mt-3 text-xs text-zinc-400 dark:text-zinc-500">
+              Compliance modules are hot-swappable — upgrading requires only a
+              single admin call to{" "}
+              <span className="font-mono">setCompliance(newModule)</span>. The
+              hook contract never needs redeployment.
+            </p>
+          </section>
         </div>
       </main>
     </>
