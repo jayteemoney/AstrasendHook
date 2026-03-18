@@ -2,33 +2,47 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useAccount, useChainId } from "wagmi";
-import { isAddress, keccak256, toBytes } from "viem";
+import { isAddress, keccak256, toBytes, decodeEventLog, maxUint256 } from "viem";
 import {
   useCreateRemittance,
+  useCreateRemittanceByPhone,
   useContributeDirectly,
   useApproveUSDT,
   useUSDTAllowance,
   useUSDTBalance,
+  useMintTestUSDT,
 } from "@/hooks/use-contract-write";
+import { useResolvePhoneString } from "@/hooks/use-phone-resolver";
+import { astraSendHookAbi } from "@/config/contracts";
 import { useComplianceStatus, useIsCompliant, useRemainingDailyLimit } from "@/hooks/use-compliance";
 import { usePlatformFee, useNextRemittanceId } from "@/hooks/use-remittance";
 import { parseUSDT, formatUSDTDisplay, decodeContractError, getExplorerTxUrl } from "@/lib/utils";
+import { trackContributedRemittance } from "@/hooks/use-user-remittances";
 
 type Step = "idle" | "approving" | "approved" | "creating" | "contributing" | "done";
+type RecipientMode = "address" | "phone";
+
+const E164_REGEX = /^\+[1-9]\d{6,14}$/;
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 export function SendForm() {
   const { address } = useAccount();
   const chainId = useChainId();
 
   const [recipient, setRecipient] = useState("");
+  const [recipientMode, setRecipientMode] = useState<RecipientMode>("address");
   const [amount, setAmount] = useState("");
+  const [groupFunding, setGroupFunding] = useState(false);
+  const [targetAmount, setTargetAmount] = useState("");
   const [expiryDays, setExpiryDays] = useState("");
   const [purpose, setPurpose] = useState("");
   const [autoRelease, setAutoRelease] = useState(true);
   const [step, setStep] = useState<Step>("idle");
 
-  // Store the predicted remittance ID so we can contribute after create confirms
   const predictedIdRef = useRef<bigint | null>(null);
+  const [createdRemittanceId, setCreatedRemittanceId] = useState<bigint | null>(null);
+
+  const isPhoneMode = recipientMode === "phone";
 
   // Platform fee
   const { data: platformFeeBps } = usePlatformFee();
@@ -40,22 +54,56 @@ export function SendForm() {
   const { data: remainingLimit } = useRemainingDailyLimit(address);
 
   // USDT balance & allowance
-  const { data: balance } = useUSDTBalance(address);
+  const { data: balance, refetch: refetchBalance } = useUSDTBalance(address);
   const { data: allowance, refetch: refetchAllowance } = useUSDTAllowance(address);
+  const {
+    mint,
+    isPending: mintPending,
+    isConfirming: mintConfirming,
+    isSuccess: mintSuccess,
+    reset: resetMint,
+  } = useMintTestUSDT();
 
-  // Next remittance ID (to predict the ID before creating)
+  // Next remittance ID
   const { data: nextId } = useNextRemittanceId();
 
-  // Resolved recipient
+  // Phone resolution (only active in phone mode)
+  const { data: resolvedPhoneWallet, isLoading: phoneResolving } = useResolvePhoneString(
+    isPhoneMode && recipient.length > 3 ? recipient : undefined
+  );
+
+  // Phone hash computed client-side (matches contract: keccak256(abi.encodePacked(phone)))
+  const phoneHash = useMemo(() => {
+    if (!isPhoneMode || !recipient) return undefined;
+    try {
+      return keccak256(toBytes(recipient)) as `0x${string}`;
+    } catch {
+      return undefined;
+    }
+  }, [isPhoneMode, recipient]);
+
+  // Resolved recipient for compliance check and validation
   const resolvedRecipient = useMemo(() => {
-    if (isAddress(recipient)) return recipient as `0x${string}`;
+    if (!isPhoneMode) {
+      return isAddress(recipient) ? (recipient as `0x${string}`) : undefined;
+    }
+    if (resolvedPhoneWallet && resolvedPhoneWallet !== ZERO_ADDRESS) {
+      return resolvedPhoneWallet as `0x${string}`;
+    }
     return undefined;
-  }, [recipient]);
+  }, [recipient, isPhoneMode, resolvedPhoneWallet]);
 
   const parsedAmount = useMemo(() => {
     const val = parseFloat(amount);
     return val > 0 ? parseUSDT(amount) : undefined;
   }, [amount]);
+
+  // When group funding is off, target = contribution. When on, target is the group goal.
+  const parsedTargetAmount = useMemo(() => {
+    if (!groupFunding) return parsedAmount;
+    const val = parseFloat(targetAmount);
+    return val > 0 ? parseUSDT(targetAmount) : undefined;
+  }, [groupFunding, targetAmount, parsedAmount]);
 
   const { data: isCompliant, isLoading: checkingCompliance } = useIsCompliant(
     address,
@@ -63,7 +111,8 @@ export function SendForm() {
     parsedAmount
   );
 
-  // Contract write hooks
+  // ── Contract write hooks ──────────────────────────────────────────
+
   const {
     approve,
     isPending: approvePending,
@@ -75,12 +124,23 @@ export function SendForm() {
 
   const {
     create,
+    receipt: createReceipt,
     isPending: createPending,
     isConfirming: createConfirming,
     isSuccess: createSuccess,
     error: createError,
     reset: resetCreate,
   } = useCreateRemittance();
+
+  const {
+    createByPhone,
+    receipt: createByPhoneReceipt,
+    isPending: createByPhonePending,
+    isConfirming: createByPhoneConfirming,
+    isSuccess: createByPhoneSuccess,
+    error: createByPhoneError,
+    reset: resetCreateByPhone,
+  } = useCreateRemittanceByPhone();
 
   const {
     contribute,
@@ -94,7 +154,6 @@ export function SendForm() {
 
   // ── Step machine ──────────────────────────────────────────────────
 
-  // After approval confirms → proceed to create
   useEffect(() => {
     if (approveSuccess && step === "approving") {
       refetchAllowance();
@@ -102,57 +161,111 @@ export function SendForm() {
     }
   }, [approveSuccess, step, refetchAllowance]);
 
-  // After create confirms → auto-contribute
   useEffect(() => {
-    if (createSuccess && (step === "creating") && predictedIdRef.current !== null) {
+    const succeeded = isPhoneMode ? createByPhoneSuccess : createSuccess;
+    const receipt = isPhoneMode ? createByPhoneReceipt : createReceipt;
+    if (succeeded && step === "creating" && receipt) {
+      let remittanceId = predictedIdRef.current ?? 1n;
+      for (const log of receipt.logs) {
+        try {
+          const decoded = decodeEventLog({
+            abi: astraSendHookAbi,
+            eventName: "RemittanceCreated",
+            data: log.data,
+            topics: log.topics as [`0x${string}`, ...`0x${string}`[]],
+          });
+          remittanceId = decoded.args.id;
+          break;
+        } catch {}
+      }
+      setCreatedRemittanceId(remittanceId);
       setStep("contributing");
-      contribute(predictedIdRef.current, parsedAmount!);
+      contribute(remittanceId, parsedAmount!);
     }
-  }, [createSuccess, step, contribute, parsedAmount]);
+  }, [
+    createSuccess,
+    createByPhoneSuccess,
+    step,
+    createReceipt,
+    createByPhoneReceipt,
+    isPhoneMode,
+    contribute,
+    parsedAmount,
+  ]);
 
-  // After contribute confirms → done
   useEffect(() => {
     if (contributeSuccess && step === "contributing") {
+      if (address && createdRemittanceId !== null) {
+        trackContributedRemittance(chainId, address, createdRemittanceId);
+      }
       setStep("done");
     }
-  }, [contributeSuccess, step]);
+  }, [contributeSuccess, step, address, chainId, createdRemittanceId]);
+
+  useEffect(() => {
+    if (mintSuccess) {
+      refetchBalance();
+      resetMint();
+    }
+  }, [mintSuccess, refetchBalance, resetMint]);
+
+  // Auto-reset form 4 seconds after successful send (only for non-group-funding)
+  useEffect(() => {
+    if (step === "done" && !groupFunding) {
+      const timer = setTimeout(() => {
+        handleNewTransfer();
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, groupFunding]);
 
   // ── Handlers ─────────────────────────────────────────────────────
 
   const resetAll = () => {
     resetApprove();
     resetCreate();
+    resetCreateByPhone();
     resetContribute();
     setStep("idle");
     predictedIdRef.current = null;
+    setCreatedRemittanceId(null);
   };
 
   const handleNewTransfer = () => {
     resetAll();
     setRecipient("");
     setAmount("");
+    setTargetAmount("");
+    setGroupFunding(false);
     setExpiryDays("");
     setPurpose("");
   };
 
+  const handleRecipientChange = (val: string) => {
+    if (val.startsWith("+")) setRecipientMode("phone");
+    else if (val.startsWith("0x") || val === "") setRecipientMode("address");
+    setRecipient(val);
+    resetAll();
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!parsedAmount || !recipient) return;
+    if (!parsedAmount) return;
+    if (isPhoneMode && !phoneHash) return;
+    if (!isPhoneMode && !recipient) return;
 
-    const needsApproval = allowance !== undefined && allowance < parsedAmount;
-
+    const needsApproval = allowance === undefined || allowance < parsedAmount;
     if (needsApproval) {
       setStep("approving");
-      approve(parsedAmount);
+      approve(maxUint256);
       return;
     }
-
     doCreate();
   };
 
-  // Called when allowance is already sufficient, or after approval
   const doCreate = () => {
-    if (!parsedAmount || !recipient) return;
+    if (!parsedAmount || !parsedTargetAmount) return;
 
     const expiresAt =
       expiryDays && parseInt(expiryDays) > 0
@@ -162,13 +275,18 @@ export function SendForm() {
       ? keccak256(toBytes(purpose))
       : ("0x0000000000000000000000000000000000000000000000000000000000000000" as `0x${string}`);
 
-    // Save predicted ID before creating
     predictedIdRef.current = nextId ?? 1n;
     setStep("creating");
-    create(recipient as `0x${string}`, parsedAmount, expiresAt, purposeHash, autoRelease);
+
+    if (isPhoneMode) {
+      if (!phoneHash) return;
+      createByPhone(phoneHash, parsedTargetAmount, expiresAt, purposeHash, autoRelease);
+    } else {
+      if (!recipient) return;
+      create(recipient as `0x${string}`, parsedTargetAmount, expiresAt, purposeHash, autoRelease);
+    }
   };
 
-  // After approval confirms, proceed to create
   useEffect(() => {
     if (step === "approved") {
       doCreate();
@@ -178,9 +296,21 @@ export function SendForm() {
 
   // ── Derived state ─────────────────────────────────────────────────
 
-  const isValidRecipient = isAddress(recipient);
+  const isPhoneFormatValid = isPhoneMode && E164_REGEX.test(recipient);
+  const isPhoneRegistered =
+    isPhoneMode &&
+    isPhoneFormatValid &&
+    !phoneResolving &&
+    resolvedPhoneWallet !== undefined &&
+    resolvedPhoneWallet !== ZERO_ADDRESS;
+
+  const isValidRecipient = isPhoneMode
+    ? isPhoneRegistered
+    : isAddress(recipient);
+
   const isValidAmount = parseFloat(amount) > 0;
-  const hasSufficientBalance = balance !== undefined && parsedAmount !== undefined && balance >= parsedAmount;
+  const hasSufficientBalance =
+    balance !== undefined && parsedAmount !== undefined && balance >= parsedAmount;
 
   const showComplianceWarning =
     resolvedRecipient !== undefined &&
@@ -192,16 +322,27 @@ export function SendForm() {
   const needsApproval =
     allowance !== undefined && parsedAmount !== undefined && allowance < parsedAmount;
 
+  const isLoadingData = balance === undefined || nextId === undefined;
+
+  const isValidTarget =
+    !groupFunding ||
+    (parsedTargetAmount !== undefined &&
+      parsedAmount !== undefined &&
+      parsedTargetAmount >= parsedAmount);
+
   const canSubmit =
     isValidRecipient &&
     isValidAmount &&
+    isValidTarget &&
     hasSufficientBalance &&
     !isBusy &&
-    !showComplianceWarning;
+    !showComplianceWarning &&
+    !isLoadingData;
 
-  const anyError = approveError || createError || contributeError;
+  const anyError = approveError || createError || createByPhoneError || contributeError;
+  const activeCreateSuccess = isPhoneMode ? createByPhoneSuccess : createSuccess;
 
-  // ── Progress indicator ────────────────────────────────────────────
+  // ── Progress ──────────────────────────────────────────────────────
 
   const stepLabel = () => {
     if (step === "approving") {
@@ -209,8 +350,10 @@ export function SendForm() {
       if (approveConfirming) return "Approving USDT...";
     }
     if (step === "approved" || step === "creating") {
-      if (createPending) return "Confirm transaction in wallet...";
-      if (createConfirming) return "Creating remittance...";
+      const pending = isPhoneMode ? createByPhonePending : createPending;
+      const confirming = isPhoneMode ? createByPhoneConfirming : createConfirming;
+      if (pending) return "Confirm transaction in wallet...";
+      if (confirming) return "Creating remittance...";
     }
     if (step === "contributing") {
       if (contributePending) return "Confirm in wallet...";
@@ -236,6 +379,12 @@ export function SendForm() {
   // ── Done state ────────────────────────────────────────────────────
 
   if (step === "done") {
+    const isGroupFundingCreation =
+      groupFunding && parsedTargetAmount && parsedAmount && parsedTargetAmount > parsedAmount;
+    const detailsPath = createdRemittanceId !== null
+      ? `/remittance/${createdRemittanceId.toString()}`
+      : null;
+
     return (
       <div className="space-y-5 text-center">
         <div className="flex items-center justify-center">
@@ -246,12 +395,46 @@ export function SendForm() {
           </div>
         </div>
         <div>
-          <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Money sent!</p>
+          <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+            {isGroupFundingCreation ? "Group remittance created!" : "Money sent!"}
+          </p>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            ${parseFloat(amount).toFixed(2)} USDT{" "}
-            {autoRelease ? "will auto-release when the target is reached" : "is ready to be claimed"}.
+            {isGroupFundingCreation
+              ? `$${parseFloat(amount).toFixed(2)} contributed toward a $${parseFloat(targetAmount).toFixed(2)} group goal.`
+              : `$${parseFloat(amount).toFixed(2)} USDT ${autoRelease ? "will auto-release when the target is reached" : "is ready to be claimed"}.`}
           </p>
         </div>
+
+        {/* View details + share link (group funding) */}
+        {detailsPath && (
+          <div className="space-y-2">
+            <a
+              href={detailsPath}
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+            >
+              View Remittance Details
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </a>
+            {isGroupFundingCreation && (
+              <button
+                type="button"
+                onClick={() => {
+                  const url = `${window.location.origin}${detailsPath}`;
+                  navigator.clipboard.writeText(url);
+                }}
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-zinc-300 bg-white py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                Copy Share Link
+              </button>
+            )}
+          </div>
+        )}
+
         {contributeHash && (
           <a
             href={getExplorerTxUrl(chainId, contributeHash)}
@@ -267,10 +450,15 @@ export function SendForm() {
         )}
         <button
           onClick={handleNewTransfer}
-          className="w-full rounded-lg bg-emerald-600 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+          className="w-full rounded-lg border border-zinc-300 bg-white py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
         >
           Send Another
         </button>
+        {!isGroupFundingCreation && (
+          <p className="text-xs text-zinc-400 dark:text-zinc-500">
+            Form resets automatically in a few seconds
+          </p>
+        )}
       </div>
     );
   }
@@ -307,20 +495,101 @@ export function SendForm() {
 
       {/* Recipient */}
       <div>
-        <label htmlFor="recipient" className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          Recipient
-        </label>
+        <div className="mb-2 flex items-center justify-between">
+          <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Recipient
+          </label>
+          {/* Mode toggle */}
+          <div className="flex rounded-lg border border-zinc-200 bg-zinc-50 p-0.5 text-xs dark:border-zinc-700 dark:bg-zinc-800">
+            <button
+              type="button"
+              onClick={() => { setRecipientMode("address"); setRecipient(""); resetAll(); }}
+              disabled={isBusy}
+              className={`rounded-md px-2.5 py-1 font-medium transition-colors ${
+                !isPhoneMode
+                  ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100"
+                  : "text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+              }`}
+            >
+              Wallet
+            </button>
+            <button
+              type="button"
+              onClick={() => { setRecipientMode("phone"); setRecipient(""); resetAll(); }}
+              disabled={isBusy}
+              className={`rounded-md px-2.5 py-1 font-medium transition-colors ${
+                isPhoneMode
+                  ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100"
+                  : "text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+              }`}
+            >
+              Phone
+            </button>
+          </div>
+        </div>
+
         <input
           id="recipient"
           type="text"
           value={recipient}
-          onChange={(e) => { setRecipient(e.target.value); resetAll(); }}
-          placeholder="Wallet address (0x...)"
+          onChange={(e) => handleRecipientChange(e.target.value)}
+          placeholder={isPhoneMode ? "+2348012345678" : "0x..."}
           disabled={isBusy}
           className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-emerald-500"
         />
-        {recipient && !isAddress(recipient) && (
+
+        {/* Address mode: invalid format */}
+        {!isPhoneMode && recipient && !isAddress(recipient) && (
           <p className="mt-1.5 text-xs text-red-500">Invalid Ethereum address</p>
+        )}
+
+        {/* Phone mode: format hint */}
+        {isPhoneMode && !recipient && (
+          <p className="mt-1.5 text-xs text-zinc-400 dark:text-zinc-500">
+            E.164 format — include country code, e.g. +2348012345678
+          </p>
+        )}
+
+        {/* Phone mode: invalid format */}
+        {isPhoneMode && recipient && !isPhoneFormatValid && (
+          <p className="mt-1.5 text-xs text-red-500">
+            Enter a valid phone number with country code (e.g. +2348012345678)
+          </p>
+        )}
+
+        {/* Phone mode: resolving */}
+        {isPhoneMode && isPhoneFormatValid && phoneResolving && (
+          <div className="mt-2 flex items-center gap-1.5 text-xs text-zinc-500">
+            <svg className="h-3 w-3 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            Resolving phone number...
+          </div>
+        )}
+
+        {/* Phone mode: not registered */}
+        {isPhoneMode && isPhoneFormatValid && !phoneResolving &&
+          resolvedPhoneWallet === ZERO_ADDRESS && (
+          <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-900 dark:bg-amber-900/20 dark:text-amber-400">
+            This phone number is not registered on AstraSend. Ask the recipient to register at{" "}
+            <span className="font-medium">/receive</span>.
+          </div>
+        )}
+
+        {/* Phone mode: resolved successfully */}
+        {isPhoneMode && isPhoneRegistered && resolvedRecipient && (
+          <div className="mt-2 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-900 dark:bg-emerald-900/20">
+            <svg className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <span className="text-xs text-emerald-700 dark:text-emerald-400">
+              Sends to:{" "}
+              <span className="font-mono font-medium">
+                {resolvedRecipient.slice(0, 6)}...{resolvedRecipient.slice(-4)}
+              </span>
+            </span>
+          </div>
         )}
       </div>
 
@@ -348,6 +617,65 @@ export function SendForm() {
           <p className="mt-1.5 text-xs text-red-500">
             Insufficient balance — you have ${formatUSDTDisplay(balance)} USDT
           </p>
+        )}
+        {balance !== undefined && balance < 1_000_000n && (
+          <button
+            type="button"
+            onClick={() => mint(1_000n * 1_000_000n)}
+            disabled={mintPending || mintConfirming}
+            className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-50 dark:border-emerald-900 dark:bg-emerald-900/20 dark:text-emerald-400"
+          >
+            {mintPending ? "Confirm in wallet..." : mintConfirming ? "Minting..." : "Get 1,000 Test USDT"}
+          </button>
+        )}
+      </div>
+
+      {/* Group Funding */}
+      <div>
+        <button
+          type="button"
+          onClick={() => { setGroupFunding(!groupFunding); setTargetAmount(""); }}
+          disabled={isBusy}
+          className="flex w-full items-center justify-between rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-left disabled:opacity-60 dark:border-zinc-800 dark:bg-zinc-900"
+        >
+          <div>
+            <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Group Funding</p>
+            <p className="text-xs text-zinc-500">Set a higher target so others can contribute the rest</p>
+          </div>
+          <div className={`relative h-6 w-11 rounded-full transition-colors ${groupFunding ? "bg-emerald-500" : "bg-zinc-300 dark:bg-zinc-600"}`}>
+            <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${groupFunding ? "left-5.5" : "left-0.5"}`} />
+          </div>
+        </button>
+
+        {groupFunding && (
+          <div className="mt-3">
+            <label htmlFor="target-amount" className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              Group Target (USDT)
+            </label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-zinc-500">$</span>
+              <input
+                id="target-amount"
+                type="number"
+                min="0"
+                step="0.01"
+                value={targetAmount}
+                onChange={(e) => setTargetAmount(e.target.value)}
+                placeholder="e.g. 500.00"
+                disabled={isBusy}
+                className="w-full rounded-lg border border-zinc-300 bg-white py-3 pl-8 pr-16 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-600 dark:focus:border-emerald-500"
+              />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium text-zinc-500">USDT</span>
+            </div>
+            {parsedTargetAmount !== undefined && parsedAmount !== undefined && parsedTargetAmount < parsedAmount && (
+              <p className="mt-1.5 text-xs text-red-500">Target must be at least your contribution (${parseFloat(amount).toFixed(2)})</p>
+            )}
+            {parsedTargetAmount !== undefined && parsedAmount !== undefined && parsedTargetAmount >= parsedAmount && (
+              <p className="mt-1.5 text-xs text-emerald-600 dark:text-emerald-500">
+                Others can contribute the remaining ${(parseFloat(targetAmount) - parseFloat(amount)).toFixed(2)} USDT
+              </p>
+            )}
+          </div>
         )}
       </div>
 
@@ -403,16 +731,22 @@ export function SendForm() {
       {/* Fee breakdown */}
       {isValidAmount && (
         <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
+          {groupFunding && parsedTargetAmount !== undefined && parsedAmount !== undefined && parsedTargetAmount >= parsedAmount && (
+            <div className="mb-2 flex items-center justify-between text-sm">
+              <span className="text-zinc-600 dark:text-zinc-400">Your contribution</span>
+              <span className="text-zinc-900 dark:text-zinc-100">${parseFloat(amount).toFixed(2)} USDT</span>
+            </div>
+          )}
           <div className="flex items-center justify-between text-sm">
             <span className="text-zinc-600 dark:text-zinc-400">Platform Fee ({feePct}%)</span>
             <span className="text-zinc-900 dark:text-zinc-100">
-              ${(parseFloat(amount) * feeDecimal).toFixed(2)} USDT
+              ${((groupFunding && parsedTargetAmount ? parseFloat(targetAmount) : parseFloat(amount)) * feeDecimal).toFixed(2)} USDT
             </span>
           </div>
           <div className="mt-1 flex items-center justify-between text-sm">
             <span className="text-zinc-600 dark:text-zinc-400">Recipient receives</span>
             <span className="font-medium text-emerald-600 dark:text-emerald-400">
-              ${(parseFloat(amount) * (1 - feeDecimal)).toFixed(2)} USDT
+              ${((groupFunding && parsedTargetAmount ? parseFloat(targetAmount) : parseFloat(amount)) * (1 - feeDecimal)).toFixed(2)} USDT
             </span>
           </div>
         </div>
@@ -431,7 +765,7 @@ export function SendForm() {
         </div>
       )}
 
-      {/* Progress steps — shown while busy */}
+      {/* Progress steps */}
       {isBusy && (
         <div className="space-y-3">
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700">
@@ -454,10 +788,10 @@ export function SendForm() {
               </span>
               <span className={approveSuccess ? "text-emerald-600 dark:text-emerald-400" : ""}>Approve USDT</span>
               <span className="text-zinc-300 dark:text-zinc-600">→</span>
-              <span className={`flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold ${step === "creating" ? "bg-emerald-600 text-white" : createSuccess ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-400" : "bg-zinc-200 text-zinc-500 dark:bg-zinc-700"}`}>
-                {createSuccess ? "✓" : "2"}
+              <span className={`flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold ${step === "creating" ? "bg-emerald-600 text-white" : activeCreateSuccess ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-400" : "bg-zinc-200 text-zinc-500 dark:bg-zinc-700"}`}>
+                {activeCreateSuccess ? "✓" : "2"}
               </span>
-              <span className={createSuccess ? "text-emerald-600 dark:text-emerald-400" : ""}>Create</span>
+              <span className={activeCreateSuccess ? "text-emerald-600 dark:text-emerald-400" : ""}>Create</span>
               <span className="text-zinc-300 dark:text-zinc-600">→</span>
               <span className={`flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold ${step === "contributing" ? "bg-emerald-600 text-white" : "bg-zinc-200 text-zinc-500 dark:bg-zinc-700"}`}>
                 3
@@ -475,7 +809,11 @@ export function SendForm() {
           disabled={!canSubmit}
           className="w-full rounded-lg bg-emerald-600 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {needsApproval && isValidAmount ? "Approve & Send" : "Send Money"}
+          {isLoadingData && isValidAmount
+            ? "Loading..."
+            : needsApproval && isValidAmount
+            ? "Approve & Send"
+            : "Send Money"}
         </button>
       )}
     </form>
