@@ -5,6 +5,7 @@ import {
   useWaitForTransactionReceipt,
   useChainId,
   useReadContract,
+  useAccount,
 } from "wagmi";
 import {
   getContracts,
@@ -14,8 +15,9 @@ import {
 
 export function useCreateRemittance() {
   const { writeContract, data: hash, isPending, error, reset } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const { isLoading: isConfirming, isSuccess, data: receipt } = useWaitForTransactionReceipt({ hash });
   const chainId = useChainId();
+  const { address } = useAccount();
   const contracts = getContracts(chainId);
 
   const create = (
@@ -25,21 +27,26 @@ export function useCreateRemittance() {
     purposeHash: `0x${string}`,
     autoRelease: boolean
   ) => {
-    writeContract({
-      address: contracts.astraSendHook,
-      abi: astraSendHookAbi,
-      functionName: "createRemittance",
-      args: [recipient, targetAmount, expiresAt, purposeHash, autoRelease],
-    });
+    if (address) {
+      writeContract({
+        address: contracts.astraSendHook,
+        abi: astraSendHookAbi,
+        functionName: "createRemittance",
+        args: [recipient, targetAmount, expiresAt, purposeHash, autoRelease],
+        account: address,
+        chainId,
+      });
+    }
   };
 
-  return { create, hash, isPending, isConfirming, isSuccess, error, reset };
+  return { create, hash, receipt, isPending, isConfirming, isSuccess, error, reset };
 }
 
 export function useCreateRemittanceByPhone() {
   const { writeContract, data: hash, isPending, error, reset } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const { isLoading: isConfirming, isSuccess, data: receipt } = useWaitForTransactionReceipt({ hash });
   const chainId = useChainId();
+  const { address } = useAccount();
   const contracts = getContracts(chainId);
 
   const createByPhone = (
@@ -49,30 +56,39 @@ export function useCreateRemittanceByPhone() {
     purposeHash: `0x${string}`,
     autoRelease: boolean
   ) => {
-    writeContract({
-      address: contracts.astraSendHook,
-      abi: astraSendHookAbi,
-      functionName: "createRemittanceByPhone",
-      args: [recipientPhoneHash, targetAmount, expiresAt, purposeHash, autoRelease],
-    });
+    if (address) {
+      writeContract({
+        address: contracts.astraSendHook,
+        abi: astraSendHookAbi,
+        functionName: "createRemittanceByPhone",
+        args: [recipientPhoneHash, targetAmount, expiresAt, purposeHash, autoRelease],
+        account: address,
+        chainId,
+      });
+    }
   };
 
-  return { createByPhone, hash, isPending, isConfirming, isSuccess, error, reset };
+  return { createByPhone, hash, receipt, isPending, isConfirming, isSuccess, error, reset };
 }
 
 export function useContributeDirectly() {
   const { writeContract, data: hash, isPending, error, reset } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
   const chainId = useChainId();
+  const { address } = useAccount();
   const contracts = getContracts(chainId);
 
   const contribute = (remittanceId: bigint, amount: bigint) => {
-    writeContract({
-      address: contracts.astraSendHook,
-      abi: astraSendHookAbi,
-      functionName: "contributeDirectly",
-      args: [remittanceId, amount],
-    });
+    if (address) {
+      writeContract({
+        address: contracts.astraSendHook,
+        abi: astraSendHookAbi,
+        functionName: "contributeDirectly",
+        args: [remittanceId, amount],
+        account: address,
+        chainId,
+      });
+    }
   };
 
   return { contribute, hash, isPending, isConfirming, isSuccess, error, reset };
@@ -82,15 +98,20 @@ export function useReleaseRemittance() {
   const { writeContract, data: hash, isPending, error, reset } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
   const chainId = useChainId();
+  const { address } = useAccount();
   const contracts = getContracts(chainId);
 
   const release = (remittanceId: bigint) => {
-    writeContract({
-      address: contracts.astraSendHook,
-      abi: astraSendHookAbi,
-      functionName: "releaseRemittance",
-      args: [remittanceId],
-    });
+    if (address) {
+      writeContract({
+        address: contracts.astraSendHook,
+        abi: astraSendHookAbi,
+        functionName: "releaseRemittance",
+        args: [remittanceId],
+        account: address,
+        chainId,
+      });
+    }
   };
 
   return { release, hash, isPending, isConfirming, isSuccess, error, reset };
@@ -100,15 +121,20 @@ export function useCancelRemittance() {
   const { writeContract, data: hash, isPending, error, reset } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
   const chainId = useChainId();
+  const { address } = useAccount();
   const contracts = getContracts(chainId);
 
   const cancel = (remittanceId: bigint) => {
-    writeContract({
-      address: contracts.astraSendHook,
-      abi: astraSendHookAbi,
-      functionName: "cancelRemittance",
-      args: [remittanceId],
-    });
+    if (address) {
+      writeContract({
+        address: contracts.astraSendHook,
+        abi: astraSendHookAbi,
+        functionName: "cancelRemittance",
+        args: [remittanceId],
+        account: address,
+        chainId,
+      });
+    }
   };
 
   return { cancel, hash, isPending, isConfirming, isSuccess, error, reset };
@@ -118,15 +144,20 @@ export function useClaimExpiredRefund() {
   const { writeContract, data: hash, isPending, error, reset } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
   const chainId = useChainId();
+  const { address } = useAccount();
   const contracts = getContracts(chainId);
 
   const claim = (remittanceId: bigint) => {
-    writeContract({
-      address: contracts.astraSendHook,
-      abi: astraSendHookAbi,
-      functionName: "claimExpiredRefund",
-      args: [remittanceId],
-    });
+    if (address) {
+      writeContract({
+        address: contracts.astraSendHook,
+        abi: astraSendHookAbi,
+        functionName: "claimExpiredRefund",
+        args: [remittanceId],
+        account: address,
+        chainId,
+      });
+    }
   };
 
   return { claim, hash, isPending, isConfirming, isSuccess, error, reset };
@@ -136,18 +167,46 @@ export function useApproveUSDT() {
   const { writeContract, data: hash, isPending, error, reset } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
   const chainId = useChainId();
+  const { address } = useAccount();
   const contracts = getContracts(chainId);
 
   const approve = (amount: bigint) => {
-    writeContract({
-      address: contracts.usdt,
-      abi: erc20Abi,
-      functionName: "approve",
-      args: [contracts.astraSendHook, amount],
-    });
+    if (address) {
+      writeContract({
+        address: contracts.usdt,
+        abi: erc20Abi,
+        functionName: "approve",
+        args: [contracts.astraSendHook, amount],
+        account: address,
+        chainId,
+      });
+    }
   };
 
   return { approve, hash, isPending, isConfirming, isSuccess, error, reset };
+}
+
+export function useMintTestUSDT() {
+  const { writeContract, data: hash, isPending, error, reset } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const chainId = useChainId();
+  const { address } = useAccount();
+  const contracts = getContracts(chainId);
+
+  const mint = (amount: bigint) => {
+    if (address) {
+      writeContract({
+        address: contracts.usdt,
+        abi: erc20Abi,
+        functionName: "mint",
+        args: [address, amount],
+        account: address,
+        chainId,
+      });
+    }
+  };
+
+  return { mint, hash, isPending, isConfirming, isSuccess, error, reset };
 }
 
 export function useUSDTBalance(address: `0x${string}` | undefined) {

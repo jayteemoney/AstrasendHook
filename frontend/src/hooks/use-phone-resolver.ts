@@ -1,6 +1,6 @@
 "use client";
 
-import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useChainId } from "wagmi";
+import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useChainId, useAccount } from "wagmi";
 import { getContracts, phoneResolverAbi } from "@/config/contracts";
 
 export function useResolvePhone(phoneHash: `0x${string}` | undefined) {
@@ -69,19 +69,28 @@ export function useResolvePhoneString(phoneNumber: string | undefined) {
 }
 
 export function useRegisterPhoneString() {
-  const { writeContract, data: hash, isPending, error, reset } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const { writeContract, data: hash, isPending, error: writeError, reset } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess, isError: isTxError, error: txError } = useWaitForTransactionReceipt({ hash });
   const chainId = useChainId();
+  const { address } = useAccount();
   const contracts = getContracts(chainId);
 
   const register = (phoneNumber: string, wallet: `0x${string}`) => {
-    writeContract({
-      address: contracts.phoneResolver,
-      abi: phoneResolverAbi,
-      functionName: "registerPhoneString",
-      args: [phoneNumber, wallet],
-    });
+    if (address) {
+      writeContract({
+        address: contracts.phoneResolver,
+        abi: phoneResolverAbi,
+        functionName: "registerPhoneString",
+        args: [phoneNumber, wallet],
+        account: address,
+        chainId,
+        gas: 300000n,
+      });
+    }
   };
 
-  return { register, hash, isPending, isConfirming, isSuccess, error, reset };
+  const error = writeError ?? txError ?? null;
+  const isError = !!writeError || isTxError;
+
+  return { register, hash, isPending, isConfirming, isSuccess, isError, error, reset };
 }

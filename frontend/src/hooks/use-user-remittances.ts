@@ -1,8 +1,52 @@
 "use client";
 
+import { useState, useEffect, useCallback } from "react";
 import { useReadContract, useReadContracts, useChainId } from "wagmi";
 import { getContracts, astraSendHookAbi } from "@/config/contracts";
 import type { RemittanceView } from "./use-remittance";
+
+// localStorage-backed store for remittances where user is only a contributor
+function storageKey(chainId: number, address: string) {
+  return `astrasend_contributed_${chainId}_${address.toLowerCase()}`;
+}
+
+export function trackContributedRemittance(
+  chainId: number,
+  address: string,
+  remittanceId: bigint
+) {
+  if (typeof window === "undefined") return;
+  const key = storageKey(chainId, address);
+  const existing: string[] = JSON.parse(localStorage.getItem(key) ?? "[]");
+  const idStr = remittanceId.toString();
+  if (!existing.includes(idStr)) {
+    localStorage.setItem(key, JSON.stringify([...existing, idStr]));
+  }
+}
+
+function useContributedRemittanceIds(
+  chainId: number,
+  address: `0x${string}` | undefined
+): bigint[] {
+  const [ids, setIds] = useState<bigint[]>([]);
+
+  const load = useCallback(() => {
+    if (!address || typeof window === "undefined") return;
+    const raw: string[] = JSON.parse(
+      localStorage.getItem(storageKey(chainId, address)) ?? "[]"
+    );
+    setIds(raw.map((s) => BigInt(s)));
+  }, [chainId, address]);
+
+  useEffect(() => {
+    load();
+    // Re-sync when storage changes in another tab
+    window.addEventListener("storage", load);
+    return () => window.removeEventListener("storage", load);
+  }, [load]);
+
+  return ids;
+}
 
 export function useCreatedRemittanceIds(address: `0x${string}` | undefined) {
   const chainId = useChainId();
@@ -48,6 +92,7 @@ export function useRemittancesBatch(ids: readonly bigint[] | undefined) {
 }
 
 export function useUserRemittances(address: `0x${string}` | undefined) {
+  const chainId = useChainId();
   const {
     data: createdIds,
     isLoading: loadingCreated,
@@ -56,12 +101,18 @@ export function useUserRemittances(address: `0x${string}` | undefined) {
     data: recipientIds,
     isLoading: loadingRecipient,
   } = useRecipientRemittanceIds(address);
+  const contributedIds = useContributedRemittanceIds(chainId, address);
 
-  // Combine and deduplicate IDs
-  const allIds = [
-    ...(createdIds ?? []),
-    ...(recipientIds ?? []),
-  ].filter((id, index, arr) => arr.indexOf(id) === index);
+  // Combine and deduplicate IDs (BigInt equality works with Set)
+  const allIds = Array.from(
+    new Map(
+      [
+        ...(createdIds ?? []),
+        ...(recipientIds ?? []),
+        ...contributedIds,
+      ].map((id) => [id.toString(), id])
+    ).values()
+  );
 
   const { data: results, isLoading: loadingDetails } =
     useRemittancesBatch(allIds);
