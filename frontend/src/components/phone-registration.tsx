@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAccount } from "wagmi";
 import { useHasPhone, useRegisterPhoneString } from "@/hooks/use-phone-resolver";
 import { decodeContractError } from "@/lib/utils";
@@ -12,12 +12,26 @@ function isValidE164(phone: string): boolean {
 export function PhoneRegistration() {
   const { address, isConnected } = useAccount();
   const [phoneInput, setPhoneInput] = useState("");
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const { data: hasPhone, isLoading: checkingPhone } = useHasPhone(address);
   const { register, isPending, isConfirming, isSuccess, error, reset } =
     useRegisterPhoneString();
 
   const isValid = isValidE164(phoneInput);
+
+  // Show inline success banner for 3s then clear input
+  useEffect(() => {
+    if (isSuccess) {
+      setShowSuccess(true);
+      const timer = setTimeout(() => {
+        setShowSuccess(false);
+        setPhoneInput("");
+        reset();
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isSuccess, reset]);
 
   const handleRegister = () => {
     if (!isValid || !address) return;
@@ -36,11 +50,12 @@ export function PhoneRegistration() {
     return <div className="h-28 animate-pulse rounded-xl bg-zinc-100 dark:bg-zinc-800" />;
   }
 
-  if (hasPhone || isSuccess) {
+  // Wallet already has a phone registered (and not mid-success animation)
+  if (hasPhone && !showSuccess) {
     return (
       <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-900 dark:bg-emerald-900/20">
         <div className="flex items-start gap-3">
-          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900">
             <svg
               className="h-5 w-5 text-emerald-600 dark:text-emerald-400"
               fill="none"
@@ -82,6 +97,17 @@ export function PhoneRegistration() {
       </div>
 
       <div className="space-y-3">
+        {showSuccess && (
+          <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 dark:border-emerald-900 dark:bg-emerald-900/20">
+            <svg className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+              Phone number registered successfully!
+            </p>
+          </div>
+        )}
+
         <div>
           <input
             type="tel"

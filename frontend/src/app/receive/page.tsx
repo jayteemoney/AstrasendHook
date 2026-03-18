@@ -4,6 +4,7 @@ import { useAccount } from "wagmi";
 import { Header } from "@/components/header";
 import { RemittanceCard } from "@/components/remittance-card";
 import { EmptyState } from "@/components/empty-state";
+import { PhoneRegistration } from "@/components/phone-registration";
 import { useRecipientRemittanceIds, useRemittancesBatch } from "@/hooks/use-user-remittances";
 import type { RemittanceView } from "@/hooks/use-remittance";
 import { RemittanceStatus, shortenAddress } from "@/lib/utils";
@@ -53,7 +54,15 @@ export default function ReceivePage() {
               Receive Money
             </h1>
             <p className="mb-5 text-sm text-zinc-500 dark:text-zinc-400">
-              Share your wallet address so anyone can send you money.
+              Register your phone number so senders can find you without needing your wallet address.
+            </p>
+
+            <div className="mb-6">
+              <PhoneRegistration />
+            </div>
+
+            <p className="mb-3 text-sm font-medium text-zinc-500 dark:text-zinc-400">
+              Or share your wallet address directly
             </p>
 
             {address && (
