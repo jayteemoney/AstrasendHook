@@ -421,10 +421,9 @@ contract AstraSendHook is BaseHook, IAstraSendHook, Ownable, ReentrancyGuardTran
         if (targetAmount == 0) revert InvalidAmount();
         if (expiresAt != 0 && expiresAt <= block.timestamp) revert InvalidExpiry();
 
-        // Check creator compliance
-        if (!compliance.isCompliant(creator, recipient, targetAmount)) {
-            revert ComplianceFailed();
-        }
+        // Check creator is not blocked/restricted (no amount check — no money transfers at creation)
+        (bool allowed,,) = compliance.getComplianceStatus(creator);
+        if (!allowed) revert ComplianceFailed();
 
         remittanceId = nextRemittanceId++;
 
