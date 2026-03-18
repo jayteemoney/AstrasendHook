@@ -73,7 +73,7 @@ This is a critical regulatory consideration. In a remittance corridor:
 
 2. **LP = corridor operator** — Liquidity providers in a remittance corridor are effectively operating that corridor. Requiring compliance for LPs means the pool itself is composed of verified capital, which is important for jurisdictions that treat corridor operators as money service businesses.
 
-3. **`getComplianceStatus` not `isCompliant`** — LP provision has no "transfer amount", so we can't use the standard `isCompliant(sender, recipient, amount)` check. Instead we use `getComplianceStatus(sender)` which checks allowlist/blocklist status without amount thresholds.
+3. **`getComplianceStatus` not `isCompliant`** — LP provision has no "transfer amount", so we can't use the standard `isCompliant(sender, recipient, amount)` check. Instead we use `getComplianceStatus(sender)` which checks allowlist/blocklist status without amount thresholds. The same applies to `createRemittance` — the creator's compliance is checked at creation time, but the target amount is not validated against daily limits (no funds move at creation).
 
 ---
 
@@ -181,6 +181,16 @@ Result: USDT never reaches swapper — it goes directly into escrow
 ```
 
 The swapper's net position: they spent Token A and received zero USDT (it went into escrow on their behalf). This is the correct semantic for a contribution — the swapper is voluntarily contributing their swap output to a remittance.
+
+**Why Unichain makes this path significantly better**
+
+The swap contribution path has a latent MEV vulnerability on standard chains: when a contributor submits a swap routed through the AstraSend pool, the transaction is visible in the mempool. A searcher can sandwich it — front-running the swap to move the price, then back-running to extract value — meaning the contributor receives less USDT into escrow than expected.
+
+On **Unichain**, the block builder runs inside a **Trusted Execution Environment (TEE)**. The block building logic is cryptographically sealed; it cannot be modified by the operator to insert MEV extractions. Sandwiching swap contributions is structurally impossible. Contributors always receive the price shown in the UI.
+
+Additionally, Unichain's **200ms Flashblocks** mean the `afterSwap` callback fires and the escrow is credited within ~200ms of submission — the recipient's progress bar updates in real time, nearly instantly.
+
+The hook code (`src/AstraSendHook.sol`) has no Unichain-specific conditionals. These benefits are delivered automatically by the chain infrastructure. The frontend wires Unichain via `frontend/src/config/wagmi.ts` (chain config) and `frontend/src/config/contracts.ts` (deployed addresses, auto-routed by `getContracts(chainId)`).
 
 **BalanceDelta sign convention:**
 BalanceDelta in `afterSwap` is from the **swapper's** perspective:

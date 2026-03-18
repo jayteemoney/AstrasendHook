@@ -23,7 +23,7 @@ src/
 │   ├── OpenCompliance.sol      # Testnet: permissionless + blocklist + daily limits
 │   ├── AllowlistCompliance.sol # Phase 1: KYC allowlist
 │   ├── WorldcoinCompliance.sol # Phase 2: World ID biometric ZK proof
-│   └── PhoneNumberResolver.sol # keccak256(phone) → wallet mapping
+│   └── PhoneNumberResolver.sol # keccak256(phone) → wallet mapping (deployed alongside compliance)
 ├── interfaces/
 │   ├── ICompliance.sol
 │   ├── IPhoneNumberResolver.sol
@@ -35,16 +35,21 @@ src/
 test/
 ├── AstraSendHook.t.sol         # Core lifecycle tests
 ├── HookSwapPath.t.sol          # Hook path integration tests (real PoolManager)
-├── OpenCompliance.t.sol        # Compliance module tests
-├── WorldcoinCompliance.t.sol   # World ID compliance tests
+├── Compliance.t.sol            # AllowlistCompliance tests
+├── OpenCompliance.t.sol        # OpenCompliance tests
+├── WorldcoinCompliance.t.sol   # WorldcoinCompliance + World ID tests
+├── PhoneResolver.t.sol         # PhoneNumberResolver tests
 ├── Integration.t.sol           # End-to-end + fuzz
 ├── Invariants.t.sol            # Solvency invariants
 ├── handlers/RemitHandler.sol   # Invariant test handler
+├── mocks/                      # Mock contracts for unit testing
 └── utils/HookTest.sol          # Base test contract with setup helpers
 
 script/
-├── Deploy.s.sol                # Deployment (supports COMPLIANCE_TYPE=allowlist|worldcoin)
-└── SetupDemo.s.sol             # Demo setup
+├── Deploy.s.sol                # Full deployment (supports all chains; testnet contracts deploy MockUSDT + OpenCompliance)
+├── DeployOpenCompliance.s.sol  # Deploy OpenCompliance standalone
+├── DeployPhoneResolver.s.sol   # Deploy PhoneNumberResolver standalone
+└── FixCompliance.s.sol         # Switch a deployed hook from AllowlistCompliance to OpenCompliance
 ```
 
 ## Key Patterns

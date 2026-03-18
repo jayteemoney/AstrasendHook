@@ -31,12 +31,19 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Environment Variables
 
-Create `frontend/.env.local`:
+Create `frontend/.env` (or `.env.local`):
 
 ```bash
 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_walletconnect_project_id
-NEXT_PUBLIC_ALCHEMY_API_KEY=your_alchemy_api_key     # optional, for RPC
-ANTHROPIC_API_KEY=your_anthropic_key                 # for AI assistant
+
+# RPC URLs (optional — defaults to public endpoints)
+NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL=https://sepolia.base.org
+NEXT_PUBLIC_BASE_RPC_URL=https://mainnet.base.org
+NEXT_PUBLIC_UNICHAIN_RPC_URL=https://mainnet.unichain.org
+NEXT_PUBLIC_UNICHAIN_SEPOLIA_RPC_URL=https://sepolia.unichain.org
+
+# AI assistant (Hugging Face)
+HUGGINGFACE_API_KEY=your_huggingface_api_key
 ```
 
 WalletConnect Project ID is required for WalletConnect-compatible wallets. Get one at [cloud.walletconnect.com](https://cloud.walletconnect.com).
@@ -56,7 +63,7 @@ frontend/src/
 │   ├── history/page.tsx        # Transaction history
 │   ├── remittance/[id]/page.tsx # Remittance detail
 │   └── api/
-│       └── assistant/route.ts  # Claude AI streaming endpoint
+│       └── chat/route.ts       # AI assistant streaming endpoint (Hugging Face)
 ├── components/
 │   ├── logo.tsx                # LogoMark SVG component (globe + arrow)
 │   ├── header.tsx              # Top nav with wallet connect
@@ -73,9 +80,9 @@ frontend/src/
 │   ├── phone-registration.tsx  # Phone number registration UI
 │   ├── remittance-card.tsx     # Remittance list item
 │   ├── remittance-detail.tsx   # Full detail + actions (release/cancel/refund)
-│   └── ai-assistant.tsx        # Claude-powered floating chat widget
+│   └── ai-assistant.tsx        # Floating AI chat widget (Qwen 2.5 72B via Hugging Face)
 ├── hooks/
-│   ├── use-remittance.ts       # useRemittance, useContribution, usePlatformFee
+│   ├── use-remittance.ts       # useRemittance, useContribution, usePlatformFee, useNextRemittanceId
 │   ├── use-remittance-events.ts# Real-time event listener (RemittanceCreated, etc.)
 │   ├── use-contract-write.ts   # useCreateRemittance, useContribute, useRelease, useCancel
 │   ├── use-compliance.ts       # useComplianceStatus, useRemainingDailyLimit, useIsBlocked
@@ -123,11 +130,12 @@ export const CONTRACT_ADDRESSES = {
 
 ### `send-form.tsx`
 
-- Recipient field auto-detects input: `0x...` → address mode, `+...` → phone mode
-- Phone mode resolves to wallet via `useResolvePhoneString`, shows resolved address preview
+- Recipient field accepts wallet addresses (`0x...`)
 - Live pre-send compliance check — disables submit if recipient is blocked or limit exceeded
+- Multi-step flow: approve USDT → create remittance → contribute funds (with animated progress indicator)
+- Decodes actual remittance ID from `RemittanceCreated` event in receipt before contributing
 - Fee breakdown updates live as amount changes
-- Requires USDT approval before first contribution
+- Submit button shows "Loading..." while USDT balance and next remittance ID are fetching
 
 ### `phone-registration.tsx`
 
@@ -138,10 +146,21 @@ export const CONTRACT_ADDRESSES = {
 
 ### `ai-assistant.tsx`
 
-- Floating chat widget mounted globally in `layout.tsx`
-- Streams responses from `/api/assistant` (Claude claude-sonnet-4-6)
-- Context-aware: passes chain ID, wallet connection state, current page
-- Three quick-question buttons on open
+AstraSend's built-in AI assistant is a first-class product feature, not a bolt-on. It is mounted globally in `layout.tsx` so it is available on every page without any navigation.
+
+**Model:** Qwen/Qwen2.5-72B-Instruct via Hugging Face inference API (`router.huggingface.co/v1/chat/completions`)
+**API route:** `frontend/src/app/api/chat/route.ts` — server-side streaming, 15s timeout, SSE response
+**Config:** `HUGGINGFACE_API_KEY` in `.env`
+
+**Key capabilities:**
+- Streaming responses — text appears token by token, no waiting for full response
+- Context-aware system prompt — the client passes `{ chainId, isConnected, currentPage }` with every request; the system prompt adapts so the assistant knows whether to explain Base vs Unichain, whether to suggest connecting a wallet, and which features are relevant to the current page
+- Ten suggested question chips on open, covering the most common user questions (fees, how to send, phone mode, group contributions, swap contribution mechanic, compliance roadmap, chain selection)
+- Knows about every AstraSend feature: phone mode, `afterSwapReturnDelta` swap contributions, the 3-phase compliance roadmap, group funding, daily limits, auto-release
+- Designed for non-crypto users — answers in plain language, explains gas and wallet concepts briefly when needed
+- Collapsible and stateful — conversation persists until explicitly cleared
+
+**Why this matters:** AstraSend's target users — migrant workers sending money home — are not DeFi-native. The assistant removes the friction of reading documentation and lets users ask questions in natural language at the exact moment they are confused. No other remittance hook submission includes this layer.
 
 ### `remittance-detail.tsx`
 
@@ -177,13 +196,15 @@ useIsCompliant(sender, recipient, amount) // → boolean: full check
 ### `use-contract-write.ts`
 
 ```typescript
-useCreateRemittance()         // createRemittance(recipient, token, amount, expiry, purpose, autoRelease)
-useCreateRemittanceByPhone()  // createRemittanceByPhone(phone, token, amount, expiry, purpose, autoRelease)
-useContribute(remittanceId)   // contribute(id, amount)
-useReleaseRemittance(id)      // release(id)
-useCancelRemittance(id)       // cancel(id)
-useClaimRefund(id)            // claimRefund(id)
-useUSDTBalance(address)       // → bigint: USDT balance
+useCreateRemittance()          // create(recipient, targetAmount, expiresAt, purposeHash, autoRelease)
+useCreateRemittanceByPhone()   // createByPhone(recipientPhoneHash, targetAmount, expiresAt, purposeHash, autoRelease)
+useContributeDirectly()        // contribute(remittanceId, amount)
+useReleaseRemittance()         // release(remittanceId)
+useCancelRemittance()          // cancel(remittanceId)
+useClaimExpiredRefund()        // claim(remittanceId)
+useApproveUSDT()               // approve(amount) — approves the hook to spend USDT
+useUSDTBalance(address)        // → bigint: USDT balance
+useUSDTAllowance(owner)        // → bigint: current USDT allowance for the hook
 ```
 
 ---

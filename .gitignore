@@ -20,3 +20,4 @@ lcov.info
 # Foundry cache
 .forge-cache/
 commit.md
+docs/demo-video-guide.md

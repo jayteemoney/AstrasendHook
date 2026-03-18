@@ -37,7 +37,7 @@ interface ICompliance {
 }
 ```
 
-**Critical design note:** `isCompliant(addr, addr, 0)` always returns `false` because `amount=0 < minimumAmount`. For compliance gates that have no send amount (e.g., `beforeAddLiquidity`), the hook calls `getComplianceStatus(account)` instead, which checks allowlist/blocklist without applying an amount threshold.
+**Critical design note:** `isCompliant(addr, addr, 0)` always returns `false` because `amount=0 < minimumAmount`. For compliance gates that have no send amount — `beforeAddLiquidity` and `createRemittance` — the hook calls `getComplianceStatus(account)` instead, which checks allowlist/blocklist status without applying an amount threshold. This is especially important for group funding: `createRemittance` with a large target amount should not fail compliance even if the creator's daily limit is lower than the target.
 
 ---
 
@@ -45,8 +45,8 @@ interface ICompliance {
 
 | Hook Point / Function | Call | Purpose |
 |---|---|---|
-| `createRemittance` | `isCompliant(creator, recipient, targetAmount)` | Validate both parties before escrow is created |
-| `createRemittanceByPhone` | `isCompliant(creator, resolvedRecipient, targetAmount)` | Same check after phone → wallet resolution |
+| `createRemittance` | `getComplianceStatus(creator).isAllowed` | Check creator allowlist/blocklist — no amount check since no funds transfer at creation |
+| `createRemittanceByPhone` | `getComplianceStatus(creator).isAllowed` | Same check after phone → wallet resolution |
 | `beforeSwap` | `isCompliant(swapper, remit.recipient, swapAmount)` | Gate swap-based contributions |
 | `contributeDirectly` | `isCompliant(msg.sender, remit.recipient, amount)` | Gate direct USDT contributions |
 | `beforeAddLiquidity` | `getComplianceStatus(sender).isAllowed` | Gate LP provision (no amount to check) |
@@ -142,8 +142,8 @@ function isCompliant(address sender, address recipient, uint256 amount)
 
 ### Blocklist Behaviour in the UI
 
-On the testnet frontend, if a wallet is on the blocklist:
-- The Send form shows an amber warning: *"Compliance check failed for this transfer"*
+On the testnet frontend, if a wallet is on the blocklist or the daily limit is exceeded:
+- The Send form shows an amber warning: *"This transfer exceeds your daily limit or the recipient is restricted."*
 - The submit button is disabled
 - The Dashboard shows `isAllowed: false` on the compliance status card
 
@@ -153,8 +153,8 @@ If you are testing and see this warning on a recipient address, the wallet has b
 
 | Chain | Address |
 |-------|---------|
-| Base Sepolia (84532) | `0xAC4038cD8EF3Bf8a37b4D910A6007A56167226AE` |
-| Unichain Sepolia (1301) | `0x61583daD9B340FF50eb6CcA6232Da15B0850946F` |
+| Base Sepolia (84532) | `0xa15d7d5505BC3D7B74A27808141D86752EfE09b6` |
+| Unichain Sepolia (1301) | `0xBfBD571aCA171167833355e944c5CC8E96FE8A16` |
 
 ---
 
@@ -348,25 +348,21 @@ new WorldcoinCompliance(
 
 ---
 
-## Phone Number Feature — Status and Roadmap
+## Phone Number Feature — Live
 
 The `PhoneNumberResolver` contract maps `keccak256(phoneNumber) → walletAddress`, enabling senders to send to a phone number instead of a wallet address.
 
 **Contract status:** Fully implemented, tested (34 tests), and deployed on both testnets.
 
-**UI status:** The phone number input is **not currently active in the send form** due to a bootstrapping problem: the contract requires recipients to self-register their phone number by calling `registerPhoneString(phone, wallet)` from their own wallet. This is the correct design for privacy — no admin can register a phone for a wallet they don't control — but it creates a chicken-and-egg problem at launch: senders cannot send to phone numbers until recipients have already onboarded and registered.
+**UI status:** **Fully active.** The send form has a Wallet / Phone toggle. Entering a `+` number switches to phone mode, resolves the recipient wallet in real time, and shows a green confirmation before submission. The hook calls `createRemittanceByPhone(phoneHash, ...)`, which resolves the hash to a wallet on-chain.
 
-The code is deliberately preserved in the repository because:
+**Privacy model:** Phone numbers are stored as `keccak256` hashes only. The plaintext is never on-chain and cannot be read back. The recipient self-registers via `registerPhoneString(phone, wallet)` — only the wallet owner can register their own phone. No admin can register a phone on behalf of a wallet they don't control.
 
-1. **The contract is correct and production-ready.** The design is privacy-preserving by construction — phone numbers are stored as keccak256 hashes and cannot be read back. This is the right approach.
-2. **The UX problem is a growth problem, not a technical problem.** Once recipients are onboarding via the app (e.g., to claim incoming remittances), phone self-registration becomes a natural step in their flow.
-3. **Recipients receiving their first remittance to a wallet address can register their phone for all future sends.** The `receive/page.tsx` already surfaces the registration UI.
-4. **For judges:** This is a deliberate MVP decision. The technical foundation — `createRemittanceByPhone`, `PhoneNumberResolver`, resolver hooks — is complete and production-ready. Enabling it in the send form requires only recipient adoption, not additional contract work.
+**Onboarding flow:**
+1. Recipient navigates to `/receive` → enters their phone in E.164 format → confirms transaction
+2. Sender enters `+2348012345678` in the send form → resolved wallet previews immediately → submits
 
-**Planned activation path:**
-1. Recipient claims a remittance → prompted to register phone number
-2. Sufficient phone registrations exist on the network
-3. Re-enable phone mode in `send-form.tsx` — one feature flag change
+The `receive/page.tsx` leads with the phone registration UI so new recipients are guided to register on first visit.
 
 ---
 

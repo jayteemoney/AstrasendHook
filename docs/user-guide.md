@@ -76,19 +76,21 @@ The Dashboard updates in **real time** — when someone contributes to your remi
 
 3. **Compliance Status** is displayed at the top of the form. Your remaining daily limit is shown.
 
-4. **Recipient** — enter the recipient's wallet address (`0x...`) **or** their phone number (`+countrycode...`).
-   - Address mode: enter a `0x...` Ethereum address.
-   - Phone mode: enter a phone number in E.164 format (e.g., `+2348012345678`). The form resolves it to the registered wallet and shows a preview.
+4. **Recipient** — use the **Wallet / Phone** toggle to choose mode:
+   - **Wallet mode**: enter the recipient's `0x...` Ethereum address
+   - **Phone mode**: enter the recipient's phone in E.164 format (e.g. `+2348012345678`). The app resolves the phone to a wallet address in real time and shows a green confirmation. The recipient must have registered their phone at `/receive` first.
 
-5. **Amount (USDT)** — enter the amount to send. The fee breakdown updates live:
+5. **Amount (USDT)** — enter your contribution amount. The fee breakdown updates live:
    - Platform Fee (read from the contract, currently 0.5%)
    - Net amount the recipient will receive
 
-6. **Expiry (days, optional)** — set a deadline. If the target is not met by this date, contributors can claim full refunds. Leave empty for no expiry.
+6. **Group Funding (optional)** — toggle on to set a group goal higher than your contribution. For example, you contribute $100 toward a $500 total for school fees. Once enabled, a **Group Target** field appears — enter the total goal. The difference is left open for other contributors. Share the remittance link after creation so others can contribute.
 
-7. **Purpose (optional)** — describe what the remittance is for (e.g., "School fees", "Medical expenses"). This is hashed on-chain for privacy.
+7. **Expiry (days, optional)** — set a deadline. If the target is not met by this date, all contributors can claim full refunds. Leave empty for no expiry.
 
-8. **Auto-release** — enabled by default. When toggled on, funds are automatically released to the recipient as soon as the target amount is reached. When off, the recipient must manually release.
+8. **Purpose (optional)** — describe what the remittance is for (e.g., "School fees", "Medical expenses"). This is hashed on-chain for privacy.
+
+9. **Auto-release** — enabled by default. When toggled on, funds are automatically released to the recipient as soon as the target amount is reached. When off, the recipient must manually release.
 
 #### Pre-Send Compliance Check
 
@@ -96,11 +98,15 @@ The Dashboard updates in **real time** — when someone contributes to your remi
 
 #### Submit
 
-10. Click **Create Remittance**.
-11. Your wallet will prompt you to **confirm the transaction**.
-12. Wait for on-chain confirmation (button shows "Creating Remittance...").
-13. On success, a green banner appears: *"Remittance created successfully!"*
-14. The form resets. Navigate to the Dashboard to see your new remittance.
+10. Click **Send Money** (or **Approve & Send** if this is your first time and USDT approval is needed).
+11. The form runs up to 3 sequential wallet transactions, shown with a step progress bar:
+    - **Step 1 (if needed):** Approve the AstraSend contract to spend your USDT. Confirm in your wallet. Wait for confirmation.
+    - **Step 2:** Create the remittance on-chain. Confirm in your wallet. Wait for confirmation.
+    - **Step 3:** Contribute your USDT into the remittance escrow. Confirm in your wallet. Wait for confirmation.
+12. On success, a green checkmark appears:
+    - For a standard send: *"Money sent!"* with a link to view the transaction.
+    - For a group funding remittance: *"Group remittance created!"* with a **View Remittance Details** button and a **Copy Share Link** button. Share this link so others can contribute toward the target.
+13. Click **Send Another** to reset the form, or use **View Remittance Details** to monitor progress.
 
 ---
 
@@ -233,16 +239,13 @@ If a remittance has an **expiry date** and the target was not met in time:
 
 ## 11. AI Assistant
 
-AstraSend includes a **Claude-powered AI assistant** that helps you navigate the app.
+AstraSend includes an **AI assistant** (powered by Qwen 2.5 via Hugging Face) that helps you navigate the app.
 
 ### How to Use
 
 1. Click the **floating chat button** (emerald circle) in the bottom-right corner of any page.
-2. The chat panel opens with a greeting and **three quick questions**:
-   - *"How do I send money?"*
-   - *"What are the fees?"*
-   - *"Which chain should I use?"*
-3. Click a quick question or type your own.
+2. The chat panel opens with a greeting and **suggested question chips** covering common topics (how to send, fees, chain selection, group contributions, cancellations, daily limits, and more).
+3. Click a chip or type your own question.
 4. The assistant responds in real time (streaming).
 5. You can ask about:
    - How to send money, contribute, release, or claim refunds
@@ -262,14 +265,14 @@ AstraSend includes a **Claude-powered AI assistant** that helps you navigate the
 
 ## 12. Supported Chains
 
-AstraSend is deployed on two testnets, with mainnet deployments ready:
+AstraSend is currently deployed on two testnets:
 
 | Chain | Settlement Speed | Key Advantage | Chain ID |
 |-------|-----------------|---------------|----------|
-| **Base Sepolia** | ~2 seconds | Testnet — use this to try AstraSend | 84532 |
-| **Unichain Sepolia** | ~200ms | Testnet — fastest settlement via Flashblocks | 1301 |
-| **Base** | ~2 seconds | Coinbase's L2, broad ecosystem, sub-cent gas | 8453 |
-| **Unichain** | ~200ms | Uniswap's L2, MEV-protected Flashblocks | 130 |
+| **Base Sepolia** | ~2 seconds | Primary testnet — recommended for getting started | 84532 |
+| **Unichain Sepolia** | ~200ms | Fastest settlement via Flashblocks | 1301 |
+
+The app **only supports these two testnets**. If your wallet is on any other network (including Base or Unichain mainnet), you will be prompted to switch before any transaction is possible.
 
 ### Why Unichain?
 
@@ -279,7 +282,7 @@ AstraSend is deployed on two testnets, with mainnet deployments ready:
 
 ### Switching Chains
 
-Use your wallet's chain switcher to move between supported chains. The app detects your chain and loads the correct contract addresses automatically. Your remittances on each chain are independent.
+Use your wallet's chain switcher to move between Base Sepolia and Unichain Sepolia. The app detects your chain and loads the correct contract addresses automatically. Your remittances on each chain are independent.
 
 ---
 
@@ -308,9 +311,9 @@ AstraSend uses **on-chain compliance** to meet regulatory requirements. The comp
 ### What Happens If Compliance Fails
 
 - The Send form runs a **live compliance check** as you fill it out.
-- If the check fails, an amber warning appears: *"Compliance check failed for this transfer."*
+- If the check fails, an amber warning appears: *"This transfer exceeds your daily limit or the recipient is restricted."*
 - The submit button is disabled, saving you gas from a transaction that would revert.
-- Common reasons: recipient is blocked, daily limit exceeded.
+- Common reasons: daily limit exceeded, recipient is on the blocklist.
 
 ---
 
@@ -321,7 +324,7 @@ AstraSend uses **on-chain compliance** to meet regulatory requirements. The comp
 | **Platform Fee** | 0.5% (50 basis points), charged at release time |
 | **Gas Fees** | Typically < $0.01 on Base / Unichain |
 | **Total Cost** | Under 1% all-in |
-| **Minimum Send** | No protocol minimum |
+| **Minimum Send** | 1 USDT (enforced by compliance module) |
 | **Daily Limit** | Default 10,000 USDT per day |
 
 ### How Fees Work

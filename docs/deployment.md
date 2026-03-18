@@ -8,19 +8,19 @@
 
 | Contract | Address | Explorer |
 |---|---|---|
-| AstraSendHook | `0x90C4eDCF58d203d924C5cAdd8c8A07bc01e798e4` | [View](https://sepolia.basescan.org/address/0x90C4eDCF58d203d924C5cAdd8c8A07bc01e798e4) |
-| OpenCompliance | `0xAC4038cD8EF3Bf8a37b4D910A6007A56167226AE` | [View](https://sepolia.basescan.org/address/0xAC4038cD8EF3Bf8a37b4D910A6007A56167226AE) |
-| PhoneNumberResolver | `0x7A4C3e1Cc3b7F70E2f7BeF4bf343270c17643544` | [View](https://sepolia.basescan.org/address/0x7A4C3e1Cc3b7F70E2f7BeF4bf343270c17643544) |
-| USDT (test token) | `0x778b10BA47EbFFA50a9368fB72b39Aa55B21C00E` | [View](https://sepolia.basescan.org/address/0x778b10BA47EbFFA50a9368fB72b39Aa55B21C00E) |
+| AstraSendHook | `0x3E2c98Aa25Ac5a96126e07458ff4F27b5A9aD8e4` | [View](https://sepolia.basescan.org/address/0x3E2c98Aa25Ac5a96126e07458ff4F27b5A9aD8e4) |
+| OpenCompliance | `0xa15d7d5505BC3D7B74A27808141D86752EfE09b6` | [View](https://sepolia.basescan.org/address/0xa15d7d5505BC3D7B74A27808141D86752EfE09b6) |
+| PhoneNumberResolver | `0x29f47d33B73712000f554FAB4119eE6ce0741Dea` | [View](https://sepolia.basescan.org/address/0x29f47d33B73712000f554FAB4119eE6ce0741Dea) |
+| USDT (MockUSDT) | `0x1754e1dBc66a0997D0442D7a24DB149d494F6FcA` | [View](https://sepolia.basescan.org/address/0x1754e1dBc66a0997D0442D7a24DB149d494F6FcA) |
 
 ### Unichain Sepolia (Chain ID: 1301)
 
 | Contract | Address | Explorer |
 |---|---|---|
-| AstraSendHook | `0xbC37002Ad169c6f3b39319eECAd65a7364eEd8e4` | [View](https://unichain-sepolia.blockscout.com/address/0xbC37002Ad169c6f3b39319eECAd65a7364eEd8e4) |
-| OpenCompliance | `0x61583daD9B340FF50eb6CcA6232Da15B0850946F` | [View](https://unichain-sepolia.blockscout.com/address/0x61583daD9B340FF50eb6CcA6232Da15B0850946F) |
-| PhoneNumberResolver | `0x012D911Dbc11232472A6AAF6b51E29A0C5929cC5` | [View](https://unichain-sepolia.blockscout.com/address/0x012D911Dbc11232472A6AAF6b51E29A0C5929cC5) |
-| USDT (test token) | `0x6F491FaBdEc72fD14e9E014f50B2ffF61C508bf1` | [View](https://unichain-sepolia.blockscout.com/address/0x6F491FaBdEc72fD14e9E014f50B2ffF61C508bf1) |
+| AstraSendHook | `0x31c76772ad6A821F0908AC3c6Caa706a043A98E4` | [View](https://sepolia.uniscan.xyz/address/0x31c76772ad6A821F0908AC3c6Caa706a043A98E4) |
+| OpenCompliance | `0xBfBD571aCA171167833355e944c5CC8E96FE8A16` | [View](https://sepolia.uniscan.xyz/address/0xBfBD571aCA171167833355e944c5CC8E96FE8A16) |
+| PhoneNumberResolver | `0x1754e1dBc66a0997D0442D7a24DB149d494F6FcA` | [View](https://sepolia.uniscan.xyz/address/0x1754e1dBc66a0997D0442D7a24DB149d494F6FcA) |
+| USDT (MockUSDT) | `0x3E4e5a1Fb92f70dB37019F3E813C79341ede37E6` | [View](https://sepolia.uniscan.xyz/address/0x3E4e5a1Fb92f70dB37019F3E813C79341ede37E6) |
 
 ---
 
@@ -191,24 +191,26 @@ cast send $PHONE_RESOLVER "registerPhoneString(string,address)" \
 
 ## Frontend Configuration
 
-Update contract addresses in `frontend/src/config/contracts.ts`:
+Update contract addresses in `frontend/src/config/contracts.ts` (current testnet addresses are already populated):
 
 ```typescript
 export const CONTRACT_ADDRESSES = {
-  8453: {  // Base Mainnet
-    astraSendHook: "0x..." as Address,
-    compliance:    "0x..." as Address,
-    phoneResolver: "0x..." as Address,
-    usdt:          "0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2" as Address,  // USDT on Base
+  84532: {  // Base Sepolia
+    astraSendHook: "0x3E2c98Aa25Ac5a96126e07458ff4F27b5A9aD8e4" as Address,
+    compliance:    "0xa15d7d5505BC3D7B74A27808141D86752EfE09b6" as Address,
+    phoneResolver: "0x29f47d33B73712000f554FAB4119eE6ce0741Dea" as Address,
+    usdt:          "0x1754e1dBc66a0997D0442D7a24DB149d494F6FcA" as Address,
   },
-  130: {   // Unichain Mainnet
-    astraSendHook: "0x..." as Address,
-    compliance:    "0x..." as Address,
-    phoneResolver: "0x..." as Address,
-    usdt:          "0x..." as Address,
+  1301: {  // Unichain Sepolia
+    astraSendHook: "0x31c76772ad6A821F0908AC3c6Caa706a043A98E4" as Address,
+    compliance:    "0xBfBD571aCA171167833355e944c5CC8E96FE8A16" as Address,
+    phoneResolver: "0x1754e1dBc66a0997D0442D7a24DB149d494F6FcA" as Address,
+    usdt:          "0x3E4e5a1Fb92f70dB37019F3E813C79341ede37E6" as Address,
   },
 };
 ```
+
+When mainnet contracts are deployed, add their chain IDs (8453 for Base, 130 for Unichain) to this map and update `wagmi.ts` to include the mainnet chains.
 
 ---
 

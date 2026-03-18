@@ -5,6 +5,19 @@
 
 ---
 
+## Partner Integrations
+
+| Partner | Integration |
+|---|---|
+| [Uniswap v4](https://uniswap.org/) | Core hook infrastructure — all 6 hook points, `afterSwapReturnDelta`, flash accounting |
+| [Uniswap Hook Incubator](https://atrium.academy/uniswap) | UHI8 January 2026 Cohort |
+| [Base](https://base.org/) | Primary L2 deployment — ~2s settlement, sub-cent gas, broad ecosystem |
+| [Unichain](https://unichain.org/) | Secondary L2 deployment — 200ms Flashblocks settlement, TEE-secured block building (MEV-proof swap contributions) |
+| [Worldcoin / World ID](https://worldcoin.org/) | Phase 2 compliance module — biometric proof-of-personhood, ZK iris scan, sybil-resistant daily limits. Contract complete and tested; activates when World ID Router is live on Base/Unichain. |
+| [OpenZeppelin v5](https://openzeppelin.com/) | `Ownable`, `SafeERC20`, `ReentrancyGuardTransient` security primitives |
+
+---
+
 ## What It Does
 
 AstraSendHook transforms any USDT liquidity pool on Uniswap v4 into a **compliant remittance corridor**. Senders create escrow remittances, contributors fund them (directly or via swaps), and recipients receive USDT automatically when the target is met — all on-chain, all trustless.
@@ -16,6 +29,7 @@ AstraSendHook transforms any USDT liquidity pool on Uniswap v4 into a **complian
 | Group funding | Multiple senders pool toward one recipient |
 | Phone sends | Send to `+countrycode...` — no wallet address needed |
 | Compliance | Pluggable: OpenCompliance / AllowlistCompliance / World ID |
+| AI assistant | Built-in contextual assistant on every page — powered by Qwen 2.5 72B |
 
 ---
 
@@ -54,18 +68,18 @@ forge test          # 229 tests, all passing
 ### Base Sepolia (Chain ID: 84532)
 | Contract | Address |
 |---|---|
-| AstraSendHook | `0x90C4eDCF58d203d924C5cAdd8c8A07bc01e798e4` |
-| OpenCompliance | `0xAC4038cD8EF3Bf8a37b4D910A6007A56167226AE` |
-| PhoneNumberResolver | `0x7A4C3e1Cc3b7F70E2f7BeF4bf343270c17643544` |
-| USDT (test) | `0x778b10BA47EbFFA50a9368fB72b39Aa55B21C00E` |
+| AstraSendHook | `0x3E2c98Aa25Ac5a96126e07458ff4F27b5A9aD8e4` |
+| OpenCompliance | `0xa15d7d5505BC3D7B74A27808141D86752EfE09b6` |
+| PhoneNumberResolver | `0x29f47d33B73712000f554FAB4119eE6ce0741Dea` |
+| USDT (MockUSDT) | `0x1754e1dBc66a0997D0442D7a24DB149d494F6FcA` |
 
 ### Unichain Sepolia (Chain ID: 1301)
 | Contract | Address |
 |---|---|
-| AstraSendHook | `0xbC37002Ad169c6f3b39319eECAd65a7364eEd8e4` |
-| OpenCompliance | `0x61583daD9B340FF50eb6CcA6232Da15B0850946F` |
-| PhoneNumberResolver | `0x012D911Dbc11232472A6AAF6b51E29A0C5929cC5` |
-| USDT (test) | `0x6F491FaBdEc72fD14e9E014f50B2ffF61C508bf1` |
+| AstraSendHook | `0x31c76772ad6A821F0908AC3c6Caa706a043A98E4` |
+| OpenCompliance | `0xBfBD571aCA171167833355e944c5CC8E96FE8A16` |
+| PhoneNumberResolver | `0x1754e1dBc66a0997D0442D7a24DB149d494F6FcA` |
+| USDT (MockUSDT) | `0x3E4e5a1Fb92f70dB37019F3E813C79341ede37E6` |
 
 ---
 
@@ -116,8 +130,10 @@ AstrasendHook/
 │   ├── handlers/RemitHandler.sol
 │   └── utils/HookTest.sol
 ├── script/
-│   ├── Deploy.s.sol
-│   └── SetupDemo.s.sol
+│   ├── Deploy.s.sol                # Full deployment (all chains + testnet convenience contracts)
+│   ├── DeployOpenCompliance.s.sol  # Deploy OpenCompliance standalone
+│   ├── DeployPhoneResolver.s.sol   # Deploy PhoneNumberResolver standalone
+│   └── FixCompliance.s.sol         # Switch deployed hook to OpenCompliance post-deploy
 ├── frontend/                       # Next.js 16 + wagmi v3 + connectkit + viem
 └── docs/                           # Full documentation
     ├── README.md                   # Submission overview (UHI8 judges)
@@ -143,6 +159,8 @@ AstrasendHook/
 
 **Phone-to-wallet resolution** — `keccak256(phoneNumber)` stored on-chain; senders resolve it without the recipient ever sharing their wallet address.
 
+**Built-in AI Assistant** — A context-aware AI assistant (Qwen/Qwen2.5-72B-Instruct via Hugging Face) is embedded on every page of the frontend. It knows which chain the user is connected to, their wallet status, and which page they are on. It can answer questions about fees, how to send, the swap contribution mechanic, the compliance roadmap, and any AstraSend feature — in plain language accessible to non-crypto users. Responses stream in real time. This is a deliberate product decision: remittances serve people who are not DeFi-native, and the assistant bridges that gap without requiring them to read documentation.
+
 ---
 
 ## Tech Stack
@@ -152,6 +170,7 @@ AstrasendHook/
 - **Uniswap v4-core + v4-periphery**
 - **OpenZeppelin v5** (Ownable, SafeERC20, ReentrancyGuardTransient)
 - **Frontend**: Next.js 16, wagmi v3, connectkit, viem, TanStack Query, Tailwind CSS v4
+- **AI Assistant**: Qwen/Qwen2.5-72B-Instruct via Hugging Face inference API (streaming, context-aware)
 
 ---
 
@@ -173,12 +192,3 @@ Full documentation is in [`/docs`](./docs/):
 ## License
 
 MIT
-
-## Acknowledgments
-
-- [Uniswap Foundation](https://uniswap.org/) — v4 hook architecture
-- [Uniswap Hook Incubator](https://atrium.academy/uniswap) — UHI8 January 2026 Cohort
-- [OpenZeppelin](https://openzeppelin.com/) — security utilities
-- [Worldcoin](https://worldcoin.org/) — World ID proof of personhood
-- [Base](https://base.org/) — L2 settlement layer
-- [Unichain](https://unichain.org/) — MEV-protected Flashblocks settlement

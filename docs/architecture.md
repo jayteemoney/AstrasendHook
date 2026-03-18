@@ -128,7 +128,7 @@ interface ICompliance {
 }
 ```
 
-The hook calls `compliance.isCompliant()` in `beforeSwap` and `createRemittance`. It calls `compliance.recordUsage()` in `_recordContribution` after every successful contribution.
+The hook calls `compliance.isCompliant()` in `beforeSwap`, `contributeDirectly`. For `createRemittance`, it calls `compliance.getComplianceStatus(creator)` — this checks allowlist/blocklist status without applying an amount threshold, since no funds transfer at creation time. It calls `compliance.recordUsage()` in `_recordContribution` after every successful contribution.
 
 ---
 
@@ -251,6 +251,79 @@ Cancelled:
   → refunds all contributors
   → status → Cancelled
 ```
+
+---
+
+## Multi-Chain Deployment & Unichain Integration
+
+AstraSend is deployed on **two chains simultaneously** — Base Sepolia and Unichain Sepolia — with mainnet-ready addresses for both Base and Unichain. The hook contract code is **identical on both chains**. Unichain's advantages are infrastructure-level, not code-level, which means the same battle-tested contract automatically benefits from Unichain's properties.
+
+### Why Unichain specifically
+
+| Property | Base | Unichain |
+|---|---|---|
+| Block time | ~2 seconds | **~200ms (Flashblocks)** |
+| MEV protection | Standard | **TEE-secured block building — sandwich attacks impossible** |
+| Ecosystem | Broad, Coinbase-backed | **Uniswap-native, purpose-built for DeFi** |
+
+**Flashblocks** matter for remittances: on Unichain the recipient sees their funds credited in ~200ms — before the sender has closed the browser tab. This qualitative difference in UX is not achievable on any other L2.
+
+**TEE block building** matters for the swap contribution path: when a contributor swaps ETH → USDT through the AstraSend pool, they are exposed to MEV (front-running, sandwich attacks) on every other chain. Unichain's Trusted Execution Environment eliminates this — the contributor always gets the price they see in the UI.
+
+### Frontend multi-chain wiring
+
+Both testnets (Base Sepolia and Unichain Sepolia) are wired in the frontend. Mainnet chains are intentionally excluded — the app enforces testnet-only to prevent users from transacting on chains where contracts are not yet deployed.
+
+**`frontend/src/config/wagmi.ts`** — chain configuration:
+```typescript
+import { baseSepolia, unichainSepolia } from "wagmi/chains";
+
+chains: [baseSepolia, unichainSepolia],
+transports: {
+  [baseSepolia.id]:     http(process.env.NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL     || "https://sepolia.base.org"),
+  [unichainSepolia.id]: http(process.env.NEXT_PUBLIC_UNICHAIN_SEPOLIA_RPC_URL || "https://sepolia.unichain.org"),
+}
+```
+
+With `enforceSupportedChains: true` in ConnectKitProvider, users connecting with a mainnet wallet are prompted to switch to a supported testnet before any transaction is possible.
+
+**`frontend/src/config/contracts.ts`** — per-chain contract addresses with automatic routing:
+```typescript
+// Base Sepolia (Chain ID: 84532)
+84532: {
+  astraSendHook: "0x3E2c98Aa25Ac5a96126e07458ff4F27b5A9aD8e4",
+  compliance:    "0xa15d7d5505BC3D7B74A27808141D86752EfE09b6",
+  phoneResolver: "0x29f47d33B73712000f554FAB4119eE6ce0741Dea",
+  usdt:          "0x1754e1dBc66a0997D0442D7a24DB149d494F6FcA",
+}
+
+// Unichain Sepolia (Chain ID: 1301)
+1301: {
+  astraSendHook: "0x31c76772ad6A821F0908AC3c6Caa706a043A98E4",
+  compliance:    "0xBfBD571aCA171167833355e944c5CC8E96FE8A16",
+  phoneResolver: "0x1754e1dBc66a0997D0442D7a24DB149d494F6FcA",
+  usdt:          "0x3E4e5a1Fb92f70dB37019F3E813C79341ede37E6",
+}
+
+// Single routing function — entire app auto-switches on chain change
+export function getContracts(chainId: number) {
+  return CONTRACT_ADDRESSES[chainId] ?? CONTRACT_ADDRESSES[84532];
+}
+```
+
+Every hook in the frontend calls `getContracts(chainId)` — when the user switches their wallet to Unichain Sepolia, every contract interaction (createRemittance, contributeDirectly, compliance checks, phone resolution) automatically targets the deployed Unichain contracts. No conditional logic anywhere else in the codebase.
+
+**`frontend/src/lib/utils.ts`** — Unichain explorer URL:
+```typescript
+1301: "https://sepolia.uniscan.xyz"  // Transaction links on Unichain
+```
+
+### Chain-agnostic hook, chain-specific benefits
+
+The `AstraSendHook.sol` contract has no chain-specific code. Deploying it on Unichain does not require any modifications. The benefits are additive:
+
+- On **Base**: 2s settlement, broad ecosystem, Coinbase trust model
+- On **Unichain**: same hook, same compliance, same escrow logic — but with 200ms Flashblocks and MEV-proof swap contributions
 
 ---
 
