@@ -13,31 +13,17 @@ export const CONTRACT_ADDRESSES: Record<
 > = {
   // Base Sepolia (testnet)
   84532: {
-    astraSendHook: "0x90C4eDCF58d203d924C5cAdd8c8A07bc01e798e4" as Address,
-    compliance: "0xAC4038cD8EF3Bf8a37b4D910A6007A56167226AE" as Address,
-    phoneResolver: "0x7A4C3e1Cc3b7F70E2f7BeF4bf343270c17643544" as Address,
-    usdt: "0x778b10BA47EbFFA50a9368fB72b39Aa55B21C00E" as Address,
-  },
-  // Base Mainnet
-  8453: {
-    astraSendHook: "0x0000000000000000000000000000000000000000" as Address,
-    compliance: "0x0000000000000000000000000000000000000000" as Address,
-    phoneResolver: "0x0000000000000000000000000000000000000000" as Address,
-    usdt: "0x0000000000000000000000000000000000000000" as Address,
+    astraSendHook: "0x3E2c98Aa25Ac5a96126e07458ff4F27b5A9aD8e4" as Address,
+    compliance: "0xa15d7d5505BC3D7B74A27808141D86752EfE09b6" as Address,
+    phoneResolver: "0x29f47d33B73712000f554FAB4119eE6ce0741Dea" as Address,
+    usdt: "0x1754e1dBc66a0997D0442D7a24DB149d494F6FcA" as Address,
   },
   // Unichain Sepolia (testnet)
   1301: {
-    astraSendHook: "0xbC37002Ad169c6f3b39319eECAd65a7364eEd8e4" as Address,
-    compliance: "0x61583daD9B340FF50eb6CcA6232Da15B0850946F" as Address,
-    phoneResolver: "0x012D911Dbc11232472A6AAF6b51E29A0C5929cC5" as Address,
-    usdt: "0x6F491FaBdEc72fD14e9E014f50B2ffF61C508bf1" as Address,
-  },
-  // Unichain Mainnet
-  130: {
-    astraSendHook: "0x0000000000000000000000000000000000000000" as Address,
-    compliance: "0x0000000000000000000000000000000000000000" as Address,
-    phoneResolver: "0x0000000000000000000000000000000000000000" as Address,
-    usdt: "0x0000000000000000000000000000000000000000" as Address,
+    astraSendHook: "0x31c76772ad6A821F0908AC3c6Caa706a043A98E4" as Address,
+    compliance: "0xBfBD571aCA171167833355e944c5CC8E96FE8A16" as Address,
+    phoneResolver: "0x1754e1dBc66a0997D0442D7a24DB149d494F6FcA" as Address,
+    usdt: "0x3E4e5a1Fb92f70dB37019F3E813C79341ede37E6" as Address,
   },
 };
 
@@ -869,6 +855,16 @@ export const phoneResolverAbi = [
 ] as const;
 
 export const erc20Abi = [
+  {
+    type: "function",
+    name: "mint",
+    inputs: [
+      { name: "to", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
   {
     type: "function",
     name: "approve",
