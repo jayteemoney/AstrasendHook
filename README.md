@@ -3,6 +3,8 @@
 > Low-cost, compliant, group-funded cross-border remittances powered by Uniswap v4 hooks on Base and Unichain.
 > Built for **UHI8 — Uniswap Hook Incubator, January 2026 Cohort**.
 
+**[Live App](https://astrasend1.vercel.app/) · [Demo Video](https://www.loom.com/share/2e228f7021db405baf4e2f05e95e20fe)**
+
 ---
 
 ## Partner Integrations
