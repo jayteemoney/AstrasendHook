@@ -1,4 +1,4 @@
-import { formatUnits, parseUnits, type Address, BaseError, ContractFunctionRevertedError } from "viem";
+import { formatUnits, parseUnits, type Address, BaseError, ContractFunctionRevertedError, ChainMismatchError } from "viem";
 
 // USDT has 6 decimals
 export const USDT_DECIMALS = 6;
@@ -147,6 +147,15 @@ export function decodeContractError(error: any): string {
     return "Wallet account not authorized. Please make sure your wallet is connected and you have selected the correct account.";
   }
 
+  // Handle chain mismatch — wallet is on the wrong network
+  if (error instanceof ChainMismatchError || msg.includes("does not match the target chain") || msg.includes("Chain mismatch")) {
+    const match = msg.match(/id:\s*(\d+)[^)]*\)\s*does not match.*id:\s*(\d+)/);
+    if (match) {
+      return `Wrong network — your wallet is on chain ${match[1]} but the transaction targets chain ${match[2]}. Please switch networks in your wallet and try again.`;
+    }
+    return "Wrong network — please switch to the correct network in your wallet and try again.";
+  }
+
   // Walk the viem error chain to find a ContractFunctionRevertedError
   if (error instanceof BaseError) {
     const revertError = error.walk(
@@ -171,7 +180,7 @@ export function decodeContractError(error: any): string {
   // a decoded reason (e.g. ComplianceFailed on AllowlistCompliance for non-allowlisted wallets).
   // Surface a clear message instead of the raw RPC noise.
   if (msg.includes("exceeds maximum per-transaction gas limit") || msg.includes("gas limit")) {
-    return "Transaction failed during gas estimation — the contract rejected your request. Your wallet may not be authorized (compliance check failed), or you may have insufficient USDT balance or allowance.";
+    return "Transaction failed during gas estimation. The contract may have rejected your request — check your USDT balance, allowance, or compliance status.";
   }
 
   return msg.length > 200 ? msg.slice(0, 200) + "..." : msg;

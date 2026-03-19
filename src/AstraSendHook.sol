@@ -13,7 +13,7 @@ import { SwapParams, ModifyLiquidityParams } from "v4-core/src/types/PoolOperati
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { ReentrancyGuardTransient } from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import { RemitTypes } from "./libraries/RemitTypes.sol";
 import { ICompliance } from "./interfaces/ICompliance.sol";
@@ -25,7 +25,7 @@ import { IAstraSendHook } from "./interfaces/IAstraSendHook.sol";
 /// @dev Uses 6 hooks: beforeSwap, afterSwap, afterSwapReturnDelta, afterInitialize,
 ///      beforeAddLiquidity, beforeDonate
 /// @author dev_jaytee
-contract AstraSendHook is BaseHook, IAstraSendHook, Ownable, ReentrancyGuardTransient {
+contract AstraSendHook is BaseHook, IAstraSendHook, Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using PoolIdLibrary for PoolKey;
     using CurrencyLibrary for Currency;

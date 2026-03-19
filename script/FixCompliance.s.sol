@@ -7,8 +7,8 @@ import { OpenCompliance } from "../src/compliance/OpenCompliance.sol";
 import { ICompliance } from "../src/interfaces/ICompliance.sol";
 
 /// @title FixCompliance
-/// @notice Switches deployed AstraSendHook contracts from AllowlistCompliance
-///         to the OpenCompliance contract so all wallets can transact freely.
+/// @notice Re-wires the compliance <-> hook relationship on deployed testnets.
+///         Run this whenever the hook or compliance is redeployed to re-link them.
 ///
 /// Run on Base Sepolia:
 ///   forge script script/FixCompliance.s.sol:FixComplianceBaseSepolia \
@@ -21,23 +21,23 @@ import { ICompliance } from "../src/interfaces/ICompliance.sol";
 // ─── Base Sepolia ─────────────────────────────────────────────────────────────
 
 contract FixComplianceBaseSepolia is Script {
-    // Existing deployed contracts on Base Sepolia (84532)
-    address constant HOOK         = 0x90C4eDCF58d203d924C5cAdd8c8A07bc01e798e4;
-    address constant OPEN_COMPLIANCE = 0xA4a7E8185C8822CC4E4F460413119da977477254;
+    address constant HOOK             = 0x3E2c98Aa25Ac5a96126e07458ff4F27b5A9aD8e4;
+    address constant OPEN_COMPLIANCE  = 0xa15d7d5505BC3D7B74A27808141D86752EfE09b6;
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
+        OpenCompliance compliance = OpenCompliance(OPEN_COMPLIANCE);
         AstraSendHook hook = AstraSendHook(HOOK);
 
-        console.log("Current compliance:", address(hook.compliance()));
-        console.log("Switching to OpenCompliance:", OPEN_COMPLIANCE);
+        console.log("Current compliance.hook:", compliance.hook());
+        compliance.setHook(HOOK);
+        console.log("compliance.hook updated to:", compliance.hook());
 
+        console.log("Current hook.compliance:", address(hook.compliance()));
         hook.setCompliance(OPEN_COMPLIANCE);
-
-        console.log("New compliance:", address(hook.compliance()));
-        console.log("Done. All wallets can now transact on Base Sepolia.");
+        console.log("hook.compliance updated to:", address(hook.compliance()));
 
         vm.stopBroadcast();
     }
@@ -46,32 +46,23 @@ contract FixComplianceBaseSepolia is Script {
 // ─── Unichain Sepolia ─────────────────────────────────────────────────────────
 
 contract FixComplianceUnichainSepolia is Script {
-    // Deployed AstraSendHook on Unichain Sepolia (1301)
-    address constant HOOK = 0xbC37002Ad169c6f3b39319eECAd65a7364eEd8e4;
+    address constant HOOK             = 0x31c76772ad6A821F0908AC3c6Caa706a043A98E4;
+    address constant OPEN_COMPLIANCE  = 0xBfBD571aCA171167833355e944c5CC8E96FE8A16;
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        address deployer = vm.addr(deployerPrivateKey);
-
         vm.startBroadcast(deployerPrivateKey);
 
-        // Deploy a new OpenCompliance for Unichain Sepolia
-        OpenCompliance openCompliance = new OpenCompliance();
-        console.log("OpenCompliance deployed at:", address(openCompliance));
-
-        // Point OpenCompliance at the hook so recordUsage works
-        openCompliance.setHook(HOOK);
-        console.log("OpenCompliance.setHook set to hook");
-
-        // Switch the hook to use OpenCompliance
+        OpenCompliance compliance = OpenCompliance(OPEN_COMPLIANCE);
         AstraSendHook hook = AstraSendHook(HOOK);
-        console.log("Current compliance:", address(hook.compliance()));
-        hook.setCompliance(address(openCompliance));
-        console.log("New compliance:", address(hook.compliance()));
 
-        console.log("Done. All wallets can now transact on Unichain Sepolia.");
-        console.log("Save this address to contracts.ts for chain 1301:");
-        console.log("  compliance:", address(openCompliance));
+        console.log("Current compliance.hook:", compliance.hook());
+        compliance.setHook(HOOK);
+        console.log("compliance.hook updated to:", compliance.hook());
+
+        console.log("Current hook.compliance:", address(hook.compliance()));
+        hook.setCompliance(OPEN_COMPLIANCE);
+        console.log("hook.compliance updated to:", address(hook.compliance()));
 
         vm.stopBroadcast();
     }

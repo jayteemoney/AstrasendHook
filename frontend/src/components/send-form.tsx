@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
-import { useAccount, useChainId } from "wagmi";
-import { isAddress, keccak256, toBytes, decodeEventLog, maxUint256 } from "viem";
+import { useAccount, useChainId, useSwitchChain } from "wagmi";
+import { isAddress, keccak256, toBytes, maxUint256 } from "viem";
 import {
   useCreateRemittance,
   useCreateRemittanceByPhone,
@@ -13,7 +13,7 @@ import {
   useMintTestUSDT,
 } from "@/hooks/use-contract-write";
 import { useResolvePhoneString } from "@/hooks/use-phone-resolver";
-import { astraSendHookAbi } from "@/config/contracts";
+import { getContracts } from "@/config/contracts";
 import { useComplianceStatus, useIsCompliant, useRemainingDailyLimit } from "@/hooks/use-compliance";
 import { usePlatformFee, useNextRemittanceId } from "@/hooks/use-remittance";
 import { parseUSDT, formatUSDTDisplay, decodeContractError, getExplorerTxUrl } from "@/lib/utils";
@@ -24,10 +24,16 @@ type RecipientMode = "address" | "phone";
 
 const E164_REGEX = /^\+[1-9]\d{6,14}$/;
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+// keccak256("RemittanceCreated(uint256,address,address,uint256,uint256,bool)")
+const REMITTANCE_CREATED_TOPIC = "0x3f10847f6f650b8341339b23422f4bc63035a6d8d75ea6b055514ff6a8b3da8f" as `0x${string}`;
 
 export function SendForm() {
   const { address } = useAccount();
   const chainId = useChainId();
+  const { switchChain } = useSwitchChain();
+  const contracts = getContracts(chainId);
+  const SUPPORTED_CHAIN_IDS = [84532, 1301];
+  const isWrongNetwork = !SUPPORTED_CHAIN_IDS.includes(chainId);
 
   const [recipient, setRecipient] = useState("");
   const [recipientMode, setRecipientMode] = useState<RecipientMode>("address");
@@ -165,22 +171,25 @@ export function SendForm() {
     const succeeded = isPhoneMode ? createByPhoneSuccess : createSuccess;
     const receipt = isPhoneMode ? createByPhoneReceipt : createReceipt;
     if (succeeded && step === "creating" && receipt) {
+      // Parse remittance ID directly from topics[1] of the RemittanceCreated log.
+      // Filter to logs from the hook contract to avoid false matches.
       let remittanceId = predictedIdRef.current ?? 1n;
+      const hookAddress = contracts.astraSendHook.toLowerCase();
       for (const log of receipt.logs) {
-        try {
-          const decoded = decodeEventLog({
-            abi: astraSendHookAbi,
-            eventName: "RemittanceCreated",
-            data: log.data,
-            topics: log.topics as [`0x${string}`, ...`0x${string}`[]],
-          });
-          remittanceId = decoded.args.id;
+        if (
+          log.address.toLowerCase() === hookAddress &&
+          log.topics[0] === REMITTANCE_CREATED_TOPIC &&
+          log.topics[1]
+        ) {
+          remittanceId = BigInt(log.topics[1]);
           break;
-        } catch {}
+        }
       }
       setCreatedRemittanceId(remittanceId);
       setStep("contributing");
-      contribute(remittanceId, parsedAmount!);
+      // waitForNode=true: poll until the RPC node sees the new remittance before
+      // simulating/writing, avoiding gas estimation failures from propagation lag.
+      contribute(remittanceId, parsedAmount!, true);
     }
   }, [
     createSuccess,
@@ -191,6 +200,7 @@ export function SendForm() {
     isPhoneMode,
     contribute,
     parsedAmount,
+    contracts.astraSendHook,
   ]);
 
   useEffect(() => {
@@ -465,6 +475,31 @@ export function SendForm() {
 
   // ── Main form ─────────────────────────────────────────────────────
 
+  if (isWrongNetwork) {
+    return (
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-5 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-400">
+        <p className="font-medium mb-2">Wrong network</p>
+        <p className="mb-4">Your wallet is on an unsupported network. Please switch to Base Sepolia or Unichain Sepolia.</p>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => switchChain({ chainId: 84532 })}
+            className="rounded-md bg-amber-100 px-3 py-1.5 font-medium hover:bg-amber-200 dark:bg-amber-800/40 dark:hover:bg-amber-800/60"
+          >
+            Switch to Base Sepolia
+          </button>
+          <button
+            type="button"
+            onClick={() => switchChain({ chainId: 1301 })}
+            className="rounded-md bg-amber-100 px-3 py-1.5 font-medium hover:bg-amber-200 dark:bg-amber-800/40 dark:hover:bg-amber-800/60"
+          >
+            Switch to Unichain Sepolia
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Compliance status bar */}
@@ -618,16 +653,14 @@ export function SendForm() {
             Insufficient balance — you have ${formatUSDTDisplay(balance)} USDT
           </p>
         )}
-        {balance !== undefined && balance < 1_000_000n && (
-          <button
-            type="button"
-            onClick={() => mint(1_000n * 1_000_000n)}
-            disabled={mintPending || mintConfirming}
-            className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-50 dark:border-emerald-900 dark:bg-emerald-900/20 dark:text-emerald-400"
-          >
-            {mintPending ? "Confirm in wallet..." : mintConfirming ? "Minting..." : "Get 1,000 Test USDT"}
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => mint(1_000n * 1_000_000n)}
+          disabled={mintPending || mintConfirming}
+          className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-50 dark:border-emerald-900 dark:bg-emerald-900/20 dark:text-emerald-400"
+        >
+          {mintPending ? "Confirm in wallet..." : mintConfirming ? "Minting..." : "Get 1,000 Test USDT"}
+        </button>
       </div>
 
       {/* Group Funding */}
